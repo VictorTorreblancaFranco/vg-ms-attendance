@@ -1,26 +1,30 @@
-server:
-  port: 8085
-
 spring:
   application:
     name: vg-ms-task
+  
+  datasource:
+    url: jdbc:postgresql://ep-delicate-butterfly-act9ceb1.sa-east-1.aws.neon.tech/neondb?sslmode=require&options=endpoint%3Dep-delicate-butterfly-act9ceb1
+    username: neondb_owner
+    password: npg_fqNK8E3xtgwm
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 2
+      connection-timeout: 30000
 
-  r2dbc:
-  url: r2dbc:postgresql://neondb_owner:npg_1nTSx8sJvPur@ep-nameless-silence-am6npcj1-pooler.c-5.us-east-1.aws.neon.tech/MICRO?sslmode=require
-  username: neondb_owner
-  password: npg_1nTSx8sJvPur
+  jpa:
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+    show-sql: true
 
-  sql:
-    init:
-      mode: never
-
-# URLs de otros microservicios
-services:
-  auth-url: http://localhost:8081
-  academic-url: http://localhost:8082
-  student-url: http://localhost:8083
+server:
+  port: 8085
 
 logging:
   level:
-    org.springframework.r2dbc: DEBUG
-    com.vg.task: DEBUG
+    com.vg: DEBUG
+    org.hibernate.SQL: DEBUG
