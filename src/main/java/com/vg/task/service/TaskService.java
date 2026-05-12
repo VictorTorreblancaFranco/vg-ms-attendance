@@ -14,4 +14,5 @@ public interface TaskService {
     List<TaskResponseDTO> findByStatus(String status);
     TaskResponseDTO publish(Long id);
     TaskResponseDTO close(Long id);
+    TaskResponseDTO reactivate(Long id);
 }

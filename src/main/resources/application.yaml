@@ -3,28 +3,30 @@ spring:
     name: vg-ms-task
   
   datasource:
-    url: jdbc:postgresql://ep-delicate-butterfly-act9ceb1.sa-east-1.aws.neon.tech/neondb?sslmode=require&options=endpoint%3Dep-delicate-butterfly-act9ceb1
+    url: jdbc:postgresql://ep-delicate-butterfly-act9ceb1.sa-east-1.aws.neon.tech/neondb?sslmode=require
     username: neondb_owner
     password: npg_fqNK8E3xtgwm
     driver-class-name: org.postgresql.Driver
-    hikari:
-      maximum-pool-size: 10
-      minimum-idle: 2
-      connection-timeout: 30000
 
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: validate
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
-        format_sql: true
     show-sql: true
 
 server:
   port: 8085
 
+services:
+  gateway: http://localhost:8080
+  auth: http://localhost:8081
+  academic: http://localhost:8082
+  student: http://localhost:8083
+  grading: http://localhost:8084
+
 logging:
   level:
-    com.vg: DEBUG
-    org.hibernate.SQL: DEBUG
+    com.vg.task: DEBUG
+    org.springframework.web.reactive.function.client: DEBUG

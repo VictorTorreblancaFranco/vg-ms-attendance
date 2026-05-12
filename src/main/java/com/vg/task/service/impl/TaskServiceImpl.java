@@ -1,5 +1,6 @@
 package com.vg.task.service.impl;
 
+import com.vg.task.client.AcademicClient;
 import com.vg.task.exception.ResourceNotFoundException;
 import com.vg.task.model.dto.TaskRequestDTO;
 import com.vg.task.model.dto.TaskResponseDTO;
@@ -18,10 +19,12 @@ public class TaskServiceImpl implements TaskService {
 
     private final TaskRepository taskRepository;
     private final TaskMapper taskMapper;
+    private final AcademicClient academicClient;
 
-    public TaskServiceImpl(TaskRepository taskRepository, TaskMapper taskMapper) {
+    public TaskServiceImpl(TaskRepository taskRepository, TaskMapper taskMapper, AcademicClient academicClient) {
         this.taskRepository = taskRepository;
         this.taskMapper = taskMapper;
+        this.academicClient = academicClient;
     }
 
     @Override
@@ -40,6 +43,11 @@ public class TaskServiceImpl implements TaskService {
 
     @Override
     public TaskResponseDTO create(TaskRequestDTO request) {
+        // Validar que la clase existe en academic
+        academicClient.validarClase(request.classId())
+            .blockOptional()
+            .orElseThrow(() -> new ResourceNotFoundException("Clase no existe con ID: " + request.classId()));
+        
         Task task = taskMapper.toEntity(request);
         task.setAssignmentDate(LocalDate.now());
         task.setStatus("draft");
@@ -54,6 +62,13 @@ public class TaskServiceImpl implements TaskService {
     public TaskResponseDTO update(Long id, TaskRequestDTO request) {
         Task existingTask = taskRepository.findById(id)
             .orElseThrow(() -> new ResourceNotFoundException("Task not found with id: " + id));
+        
+        // Validar clase si cambió
+        if (!existingTask.getClassId().equals(request.classId())) {
+            academicClient.validarClase(request.classId())
+                .blockOptional()
+                .orElseThrow(() -> new ResourceNotFoundException("Clase no existe con ID: " + request.classId()));
+        }
         
         Task updatedTask = taskMapper.toEntity(request);
         updatedTask.setId(id);
@@ -91,6 +106,11 @@ public class TaskServiceImpl implements TaskService {
     public TaskResponseDTO publish(Long id) {
         Task task = taskRepository.findById(id)
             .orElseThrow(() -> new ResourceNotFoundException("Task not found with id: " + id));
+        
+        if (!"draft".equals(task.getStatus())) {
+            throw new IllegalStateException("Solo se pueden publicar tareas en estado BORRADOR. Estado actual: " + task.getStatus());
+        }
+        
         task.setStatus("published");
         task.setUpdatedAt(OffsetDateTime.now());
         Task saved = taskRepository.save(task);
@@ -101,9 +121,31 @@ public class TaskServiceImpl implements TaskService {
     public TaskResponseDTO close(Long id) {
         Task task = taskRepository.findById(id)
             .orElseThrow(() -> new ResourceNotFoundException("Task not found with id: " + id));
+        
+        if (!"published".equals(task.getStatus())) {
+            throw new IllegalStateException("Solo se pueden cerrar tareas en estado PUBLICADA. Estado actual: " + task.getStatus());
+        }
+        
         task.setStatus("closed");
         task.setUpdatedAt(OffsetDateTime.now());
         Task saved = taskRepository.save(task);
         return taskMapper.toResponseDTO(saved);
+    }
+
+    @Override
+    public TaskResponseDTO reactivate(Long id) {
+        Task task = taskRepository.findById(id)
+            .orElseThrow(() -> new ResourceNotFoundException("Task not found with id: " + id));
+        
+        if ("closed".equals(task.getStatus())) {
+            task.setStatus("published");
+            task.setUpdatedAt(OffsetDateTime.now());
+            Task saved = taskRepository.save(task);
+            return taskMapper.toResponseDTO(saved);
+        } else if ("draft".equals(task.getStatus())) {
+            throw new IllegalStateException("La tarea está en BORRADOR, use PUBLICAR en lugar de REACTIVAR");
+        } else {
+            throw new IllegalStateException("No se puede reactivar una tarea en estado: " + task.getStatus());
+        }
     }
 }

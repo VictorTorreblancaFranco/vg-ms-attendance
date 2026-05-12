@@ -64,4 +64,9 @@ public class TaskRest {
     public ResponseEntity<TaskResponseDTO> close(@PathVariable Long id) {
         return ResponseEntity.ok(taskService.close(id));
     }
+
+    @PatchMapping("/{id}/reactivate")
+    public ResponseEntity<TaskResponseDTO> reactivate(@PathVariable Long id) {
+        return ResponseEntity.ok(taskService.reactivate(id));
+    }
 }
