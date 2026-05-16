@@ -1,4 +1,4 @@
-package com.vg.task.model.dto;
+package com.vg.task.domain.dto;
 
 import java.time.LocalDate;
 import java.time.OffsetDateTime;

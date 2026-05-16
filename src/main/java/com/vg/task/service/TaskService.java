@@ -1,18 +1,18 @@
 package com.vg.task.service;
 
-import com.vg.task.model.dto.TaskRequestDTO;
-import com.vg.task.model.dto.TaskResponseDTO;
-import java.util.List;
+import com.vg.task.domain.dto.TaskRequestDTO;
+import com.vg.task.domain.dto.TaskResponseDTO;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
 public interface TaskService {
-    List<TaskResponseDTO> findAll();
-    TaskResponseDTO findById(Long id);
-    TaskResponseDTO create(TaskRequestDTO request);
-    TaskResponseDTO update(Long id, TaskRequestDTO request);
-    void delete(Long id);
-    List<TaskResponseDTO> findByClassId(Integer classId);
-    List<TaskResponseDTO> findByStatus(String status);
-    TaskResponseDTO publish(Long id);
-    TaskResponseDTO close(Long id);
-    TaskResponseDTO reactivate(Long id);
+    Flux<TaskResponseDTO> findAll();
+    Mono<TaskResponseDTO> findById(Long id);
+    Mono<TaskResponseDTO> create(TaskRequestDTO request);
+    Mono<TaskResponseDTO> update(Long id, TaskRequestDTO request);
+    Mono<Void> delete(Long id);
+    Flux<TaskResponseDTO> findByClassId(Integer classId);
+    Flux<TaskResponseDTO> findByStatus(String status);
+    Mono<TaskResponseDTO> publish(Long id);
+    Mono<TaskResponseDTO> close(Long id);
 }

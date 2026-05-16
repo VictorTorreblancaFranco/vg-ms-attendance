@@ -1,13 +1,12 @@
 package com.vg.task.repository;
 
-import com.vg.task.model.entity.Task;
-import org.springframework.data.jpa.repository.JpaRepository;
+import com.vg.task.domain.model.Task;
+import org.springframework.data.repository.reactive.ReactiveCrudRepository;
 import org.springframework.stereotype.Repository;
-import java.util.List;
+import reactor.core.publisher.Flux;
 
 @Repository
-public interface TaskRepository extends JpaRepository<Task, Long> {
-    List<Task> findByClassId(Integer classId);
-    List<Task> findByStatus(String status);
-    List<Task> findByClassIdAndStatus(Integer classId, String status);
+public interface TaskRepository extends ReactiveCrudRepository<Task, Long> {
+    Flux<Task> findByClassId(Integer classId);
+    Flux<Task> findByStatus(String status);
 }

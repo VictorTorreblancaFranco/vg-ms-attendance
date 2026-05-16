@@ -1,6 +1,10 @@
-package com.vg.task.model.dto;
+package com.vg.task.domain.dto;
 
-import jakarta.validation.constraints.*;
+import jakarta.validation.constraints.Future;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
+
 import java.time.LocalDate;
 
 public record TaskRequestDTO(
@@ -19,12 +23,11 @@ public record TaskRequestDTO(
     @Future(message = "Due date must be in the future")
     LocalDate dueDate,
     
-    @DecimalMin(value = "0.0", inclusive = true)
     Double pointsValue,
     
-    @Min(value = 1, message = "At least 1 attempt allowed")
     Short allowedAttempts,
     
     Boolean isGroupTask,
+    
     Boolean visibleToParents
 ) {}
