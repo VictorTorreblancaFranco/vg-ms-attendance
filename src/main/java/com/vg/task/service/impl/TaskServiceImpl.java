@@ -7,9 +7,11 @@ import com.vg.task.domain.dto.TaskResponseDTO;
 import com.vg.task.domain.dto.UpdateTaskRequestDTO;
 import com.vg.task.domain.model.Task;
 import com.vg.task.domain.model.TaskFile;
+import com.vg.task.exception.BadRequestException;
 import com.vg.task.exception.NotFoundException;
 import com.vg.task.repository.TaskFileRepository;
 import com.vg.task.repository.TaskRepository;
+import com.vg.task.service.NotificationService;
 import com.vg.task.service.TaskService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -24,9 +26,13 @@ import java.util.List;
 @RequiredArgsConstructor
 public class TaskServiceImpl implements TaskService {
 
+    private static final int MAX_FILES = 5;
+    private static final int MIN_FILES = 1;
+
     private final TaskRepository taskRepository;
     private final TaskFileRepository taskFileRepository;
     private final AcademicClient academicClient;
+    private final NotificationService notificationService;
 
     @Override
     public Flux<TaskResponseDTO> findAll() {
@@ -59,6 +65,14 @@ public class TaskServiceImpl implements TaskService {
 
     @Override
     public Mono<TaskResponseDTO> save(TaskRequestDTO request) {
+        // Validar archivos
+        if (request.files() == null || request.files().isEmpty()) {
+            return Mono.error(new BadRequestException("At least one file or link is required"));
+        }
+        if (request.files().size() > MAX_FILES) {
+            return Mono.error(new BadRequestException("Maximum " + MAX_FILES + " files allowed, got " + request.files().size()));
+        }
+        
         return academicClient.validateClass(request.classId())
                 .flatMap(isValid -> {
                     if (!isValid) {
@@ -75,6 +89,8 @@ public class TaskServiceImpl implements TaskService {
                             .criterionId(request.criterionId())
                             .pointsValue(request.pointsValue() != null ? request.pointsValue() : 0.0)
                             .dueDate(request.dueDate())
+                            .scheduledPublishDate(request.scheduledPublishDate())
+                            .scheduledCloseDate(request.scheduledCloseDate())
                             .status("draft")
                             .isDeleted(false)
                             .createdBy(request.createdBy())
@@ -148,7 +164,14 @@ public class TaskServiceImpl implements TaskService {
                 .flatMap(task -> {
                     task.setStatus("published");
                     task.setUpdatedAt(OffsetDateTime.now());
-                    return taskRepository.save(task);
+                    return taskRepository.save(task)
+                            .flatMap(saved -> notificationService.send(
+                                    saved.getCreatedBy(),
+                                    saved.getId(),
+                                    "TASK_PUBLISHED",
+                                    "Tarea Publicada",
+                                    "La tarea '" + saved.getTitle() + "' ya está disponible para los estudiantes"
+                            ).thenReturn(saved));
                 })
                 .flatMap(this::toResponseWithFiles);
     }
@@ -174,7 +197,14 @@ public class TaskServiceImpl implements TaskService {
                 .flatMap(task -> {
                     task.setStatus("closed");
                     task.setUpdatedAt(OffsetDateTime.now());
-                    return taskRepository.save(task);
+                    return taskRepository.save(task)
+                            .flatMap(saved -> notificationService.send(
+                                    saved.getCreatedBy(),
+                                    saved.getId(),
+                                    "TASK_CLOSED",
+                                    "Tarea Cerrada",
+                                    "La tarea '" + saved.getTitle() + "' ha sido cerrada"
+                            ).thenReturn(saved));
                 })
                 .flatMap(this::toResponseWithFiles);
     }

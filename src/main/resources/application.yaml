@@ -21,6 +21,9 @@ spring:
       mode: always
       schema-locations: classpath:sql/schema.sql
 
+  main:
+    allow-bean-definition-overriding: true
+
 services:
   academic-url: ${ACADEMIC_SERVICE_URL:http://localhost:8082}
   student-url: ${STUDENT_SERVICE_URL:http://localhost:8083}
