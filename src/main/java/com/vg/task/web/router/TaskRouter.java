@@ -17,9 +17,12 @@ public class TaskRouter {
     @Bean
     public RouterFunction<ServerResponse> taskRoutes(TaskHandler handler) {
         return route(GET(API_V1), handler::findAll)
-                .andRoute(GET(API_V1 + "/{id}"), handler::findById)
+                .andRoute(GET(API_V1 + "/export/csv"), handler::exportCsv)
+                .andRoute(GET(API_V1 + "/export/excel"), handler::exportExcel)
+                .andRoute(GET(API_V1 + "/filter"), handler::filter)
                 .andRoute(GET(API_V1 + "/status/{status}"), handler::findByStatus)
                 .andRoute(GET(API_V1 + "/class/{classId}"), handler::findByClassId)
+                .andRoute(GET(API_V1 + "/{id}"), handler::findById)
                 .andRoute(POST(API_V1 + "/save"), handler::save)
                 .andRoute(PUT(API_V1 + "/update"), handler::update)
                 .andRoute(DELETE(API_V1 + "/{id}"), handler::delete)

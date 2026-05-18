@@ -1,5 +1,6 @@
 package com.vg.task.web.handler;
 
+import com.vg.task.domain.dto.TaskFilterDTO;
 import com.vg.task.domain.dto.TaskRequestDTO;
 import com.vg.task.domain.dto.TaskResponseDTO;
 import com.vg.task.domain.dto.UpdateTaskRequestDTO;
@@ -12,6 +13,7 @@ import org.springframework.web.reactive.function.server.ServerRequest;
 import org.springframework.web.reactive.function.server.ServerResponse;
 import reactor.core.publisher.Mono;
 
+import java.time.OffsetDateTime;
 import java.util.Map;
 
 @Component
@@ -47,6 +49,45 @@ public class TaskHandler {
         return ServerResponse.ok()
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(taskService.findByClassId(classId), TaskResponseDTO.class);
+    }
+
+    public Mono<ServerResponse> filter(ServerRequest request) {
+        String status = request.queryParam("status").orElse(null);
+        String classIdParam = request.queryParam("classId").orElse(null);
+        String createdByParam = request.queryParam("createdBy").orElse(null);
+        String fromDate = request.queryParam("fromDate").orElse(null);
+        String toDate = request.queryParam("toDate").orElse(null);
+        
+        TaskFilterDTO filter = new TaskFilterDTO(
+            status,
+            classIdParam != null ? Integer.parseInt(classIdParam) : null,
+            createdByParam != null ? Integer.parseInt(createdByParam) : null,
+            fromDate != null ? OffsetDateTime.parse(fromDate) : null,
+            toDate != null ? OffsetDateTime.parse(toDate) : null,
+            false
+        );
+        
+        return ServerResponse.ok()
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(taskService.filter(filter), TaskResponseDTO.class);
+    }
+
+    public Mono<ServerResponse> exportCsv(ServerRequest request) {
+        TaskFilterDTO filter = new TaskFilterDTO(null, null, null, null, null, false);
+        return taskService.exportToCsv(filter)
+                .flatMap(data -> ServerResponse.ok()
+                        .header("Content-Disposition", "attachment; filename=tasks.csv")
+                        .contentType(MediaType.parseMediaType("text/csv"))
+                        .bodyValue(data));
+    }
+
+    public Mono<ServerResponse> exportExcel(ServerRequest request) {
+        TaskFilterDTO filter = new TaskFilterDTO(null, null, null, null, null, false);
+        return taskService.exportToExcel(filter)
+                .flatMap(data -> ServerResponse.ok()
+                        .header("Content-Disposition", "attachment; filename=tasks.xlsx")
+                        .contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+                        .bodyValue(data));
     }
 
     public Mono<ServerResponse> save(ServerRequest request) {

@@ -1,5 +1,6 @@
 package com.vg.task.service;
 
+import com.vg.task.domain.dto.TaskFilterDTO;
 import com.vg.task.domain.dto.TaskRequestDTO;
 import com.vg.task.domain.dto.TaskResponseDTO;
 import com.vg.task.domain.dto.UpdateTaskRequestDTO;
@@ -18,4 +19,11 @@ public interface TaskService {
     Mono<TaskResponseDTO> deactivate(Long id);
     Mono<TaskResponseDTO> close(Long id);
     Mono<TaskResponseDTO> restore(Long id);
+    
+    // Filtros avanzados
+    Flux<TaskResponseDTO> filter(TaskFilterDTO filter);
+    
+    // Exportar
+    Mono<byte[]> exportToCsv(TaskFilterDTO filter);
+    Mono<byte[]> exportToExcel(TaskFilterDTO filter);
 }
