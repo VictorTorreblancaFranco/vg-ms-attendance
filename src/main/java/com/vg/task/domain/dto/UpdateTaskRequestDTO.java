@@ -1,10 +1,14 @@
 package com.vg.task.domain.dto;
 
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotNull;
 import java.time.OffsetDateTime;
 import java.util.List;
 
-public record TaskResponseDTO(
+public record UpdateTaskRequestDTO(
+    @NotNull(message = "Task ID is required")
     Long id,
+    
     String title,
     String description,
     String instructions,
@@ -14,11 +18,7 @@ public record TaskResponseDTO(
     OffsetDateTime dueDate,
     OffsetDateTime scheduledPublishDate,
     OffsetDateTime scheduledCloseDate,
-    String status,
-    Boolean isDeleted,
-    Integer createdBy,
-    OffsetDateTime createdAt,
-    OffsetDateTime updatedAt,
-    OffsetDateTime deletedAt,
+    
+    @Valid
     List<TaskFileDTO> files
 ) {}

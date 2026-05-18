@@ -1,10 +1,14 @@
 package com.vg.task.service.impl;
 
 import com.vg.task.client.AcademicClient;
+import com.vg.task.domain.dto.TaskFileDTO;
 import com.vg.task.domain.dto.TaskRequestDTO;
 import com.vg.task.domain.dto.TaskResponseDTO;
+import com.vg.task.domain.dto.UpdateTaskRequestDTO;
 import com.vg.task.domain.model.Task;
+import com.vg.task.domain.model.TaskFile;
 import com.vg.task.exception.NotFoundException;
+import com.vg.task.repository.TaskFileRepository;
 import com.vg.task.repository.TaskRepository;
 import com.vg.task.service.TaskService;
 import lombok.RequiredArgsConstructor;
@@ -12,152 +16,210 @@ import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
-import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
 public class TaskServiceImpl implements TaskService {
 
     private final TaskRepository taskRepository;
+    private final TaskFileRepository taskFileRepository;
     private final AcademicClient academicClient;
 
     @Override
     public Flux<TaskResponseDTO> findAll() {
         return taskRepository.findAll()
-                .map(this::toResponseDTO);
+                .filter(task -> !Boolean.TRUE.equals(task.getIsDeleted()))
+                .flatMap(this::toResponseWithFiles);
+    }
+
+    @Override
+    public Flux<TaskResponseDTO> findByStatus(String status) {
+        return taskRepository.findByStatus(status)
+                .filter(task -> !Boolean.TRUE.equals(task.getIsDeleted()))
+                .flatMap(this::toResponseWithFiles);
+    }
+
+    @Override
+    public Flux<TaskResponseDTO> findByClassId(Integer classId) {
+        return taskRepository.findByClassId(classId)
+                .filter(task -> !Boolean.TRUE.equals(task.getIsDeleted()))
+                .flatMap(this::toResponseWithFiles);
     }
 
     @Override
     public Mono<TaskResponseDTO> findById(Long id) {
         return taskRepository.findById(id)
+                .filter(task -> !Boolean.TRUE.equals(task.getIsDeleted()))
                 .switchIfEmpty(Mono.error(new NotFoundException("Task not found with id: " + id)))
-                .map(this::toResponseDTO);
+                .flatMap(this::toResponseWithFiles);
     }
 
     @Override
-    public Mono<TaskResponseDTO> create(TaskRequestDTO request) {
+    public Mono<TaskResponseDTO> save(TaskRequestDTO request) {
         return academicClient.validateClass(request.classId())
                 .flatMap(isValid -> {
                     if (!isValid) {
                         return Mono.error(new NotFoundException("Class not found with id: " + request.classId()));
                     }
                     
+                    OffsetDateTime now = OffsetDateTime.now();
+                    
                     Task task = Task.builder()
-                            .classId(request.classId())
-                            .criterionId(request.criterionId())
                             .title(request.title())
                             .description(request.description())
                             .instructions(request.instructions())
-                            .dueDate(request.dueDate())
+                            .classId(request.classId())
+                            .criterionId(request.criterionId())
                             .pointsValue(request.pointsValue() != null ? request.pointsValue() : 0.0)
-                            .allowedAttempts(request.allowedAttempts() != null ? request.allowedAttempts() : 1)
-                            .isGroupTask(request.isGroupTask() != null ? request.isGroupTask() : false)
-                            .visibleToParents(request.visibleToParents() != null ? request.visibleToParents() : true)
-                            .assignmentDate(LocalDate.now())
+                            .dueDate(request.dueDate())
                             .status("draft")
-                            .createdAt(OffsetDateTime.now())
-                            .updatedAt(OffsetDateTime.now())
+                            .isDeleted(false)
+                            .createdBy(request.createdBy())
+                            .createdAt(now)
+                            .updatedAt(now)
                             .build();
                     
+                    return taskRepository.save(task)
+                            .flatMap(savedTask -> {
+                                if (request.files() != null && !request.files().isEmpty()) {
+                                    List<TaskFile> files = new ArrayList<>();
+                                    for (TaskFileDTO fileDTO : request.files()) {
+                                        TaskFile file = TaskFile.builder()
+                                                .taskId(savedTask.getId())
+                                                .fileName(fileDTO.fileName())
+                                                .fileUrl(fileDTO.fileUrl())
+                                                .fileType(fileDTO.fileType())
+                                                .fileSizeKb(fileDTO.fileSizeKb())
+                                                .createdAt(now)
+                                                .build();
+                                        files.add(file);
+                                    }
+                                    return taskFileRepository.saveAll(files)
+                                            .collectList()
+                                            .thenReturn(savedTask);
+                                }
+                                return Mono.just(savedTask);
+                            });
+                })
+                .flatMap(this::toResponseWithFiles);
+    }
+
+    @Override
+    public Mono<TaskResponseDTO> update(UpdateTaskRequestDTO request) {
+        return taskRepository.findById(request.id())
+                .filter(task -> !Boolean.TRUE.equals(task.getIsDeleted()))
+                .switchIfEmpty(Mono.error(new NotFoundException("Task not found with id: " + request.id())))
+                .flatMap(task -> {
+                    if (request.title() != null) task.setTitle(request.title());
+                    if (request.description() != null) task.setDescription(request.description());
+                    if (request.instructions() != null) task.setInstructions(request.instructions());
+                    if (request.classId() != null) task.setClassId(request.classId());
+                    if (request.criterionId() != null) task.setCriterionId(request.criterionId());
+                    if (request.pointsValue() != null) task.setPointsValue(request.pointsValue());
+                    if (request.dueDate() != null) task.setDueDate(request.dueDate());
+                    if (request.scheduledPublishDate() != null) task.setScheduledPublishDate(request.scheduledPublishDate());
+                    if (request.scheduledCloseDate() != null) task.setScheduledCloseDate(request.scheduledCloseDate());
+                    task.setUpdatedAt(OffsetDateTime.now());
                     return taskRepository.save(task);
                 })
-                .map(this::toResponseDTO);
+                .flatMap(this::toResponseWithFiles);
     }
 
     @Override
-    public Mono<TaskResponseDTO> update(Long id, TaskRequestDTO request) {
+    public Mono<Void> deleteById(Long id) {
         return taskRepository.findById(id)
-                .switchIfEmpty(Mono.error(new NotFoundException("Task not found with id: " + id)))
-                .flatMap(existingTask -> academicClient.validateClass(request.classId())
-                        .flatMap(isValid -> {
-                            if (!isValid) {
-                                return Mono.error(new NotFoundException("Class not found with id: " + request.classId()));
-                            }
-                            
-                            existingTask.setClassId(request.classId());
-                            existingTask.setCriterionId(request.criterionId());
-                            existingTask.setTitle(request.title());
-                            existingTask.setDescription(request.description());
-                            existingTask.setInstructions(request.instructions());
-                            existingTask.setDueDate(request.dueDate());
-                            existingTask.setPointsValue(request.pointsValue() != null ? request.pointsValue() : 0.0);
-                            existingTask.setAllowedAttempts(request.allowedAttempts() != null ? request.allowedAttempts() : 1);
-                            existingTask.setIsGroupTask(request.isGroupTask() != null ? request.isGroupTask() : false);
-                            existingTask.setVisibleToParents(request.visibleToParents() != null ? request.visibleToParents() : true);
-                            existingTask.setUpdatedAt(OffsetDateTime.now());
-                            
-                            return taskRepository.save(existingTask);
-                        }))
-                .map(this::toResponseDTO);
-    }
-
-    @Override
-    public Mono<Void> delete(Long id) {
-        return taskRepository.findById(id)
-                .switchIfEmpty(Mono.error(new NotFoundException("Task not found with id: " + id)))
-                .flatMap(taskRepository::delete);
-    }
-
-    @Override
-    public Flux<TaskResponseDTO> findByClassId(Integer classId) {
-        return taskRepository.findByClassId(classId)
-                .map(this::toResponseDTO);
-    }
-
-    @Override
-    public Flux<TaskResponseDTO> findByStatus(String status) {
-        return taskRepository.findByStatus(status)
-                .map(this::toResponseDTO);
-    }
-
-    @Override
-    public Mono<TaskResponseDTO> publish(Long id) {
-        return taskRepository.findById(id)
+                .filter(task -> !Boolean.TRUE.equals(task.getIsDeleted()))
                 .switchIfEmpty(Mono.error(new NotFoundException("Task not found with id: " + id)))
                 .flatMap(task -> {
-                    if (!"draft".equals(task.getStatus())) {
-                        return Mono.error(new IllegalStateException("Only draft tasks can be published. Current status: " + task.getStatus()));
-                    }
+                    task.setIsDeleted(true);
+                    task.setDeletedAt(OffsetDateTime.now());
+                    return taskRepository.save(task).then();
+                });
+    }
+
+    @Override
+    public Mono<TaskResponseDTO> activate(Long id) {
+        return taskRepository.findById(id)
+                .filter(task -> !Boolean.TRUE.equals(task.getIsDeleted()))
+                .switchIfEmpty(Mono.error(new NotFoundException("Task not found with id: " + id)))
+                .flatMap(task -> {
                     task.setStatus("published");
                     task.setUpdatedAt(OffsetDateTime.now());
                     return taskRepository.save(task);
                 })
-                .map(this::toResponseDTO);
+                .flatMap(this::toResponseWithFiles);
+    }
+
+    @Override
+    public Mono<TaskResponseDTO> deactivate(Long id) {
+        return taskRepository.findById(id)
+                .filter(task -> !Boolean.TRUE.equals(task.getIsDeleted()))
+                .switchIfEmpty(Mono.error(new NotFoundException("Task not found with id: " + id)))
+                .flatMap(task -> {
+                    task.setStatus("archived");
+                    task.setUpdatedAt(OffsetDateTime.now());
+                    return taskRepository.save(task);
+                })
+                .flatMap(this::toResponseWithFiles);
     }
 
     @Override
     public Mono<TaskResponseDTO> close(Long id) {
         return taskRepository.findById(id)
+                .filter(task -> !Boolean.TRUE.equals(task.getIsDeleted()))
                 .switchIfEmpty(Mono.error(new NotFoundException("Task not found with id: " + id)))
                 .flatMap(task -> {
-                    if (!"published".equals(task.getStatus())) {
-                        return Mono.error(new IllegalStateException("Only published tasks can be closed. Current status: " + task.getStatus()));
-                    }
                     task.setStatus("closed");
                     task.setUpdatedAt(OffsetDateTime.now());
                     return taskRepository.save(task);
                 })
-                .map(this::toResponseDTO);
+                .flatMap(this::toResponseWithFiles);
     }
 
-    private TaskResponseDTO toResponseDTO(Task task) {
-        return new TaskResponseDTO(
-                task.getId(),
-                task.getClassId(),
-                task.getCriterionId(),
-                task.getTitle(),
-                task.getDescription(),
-                task.getInstructions(),
-                task.getAssignmentDate(),
-                task.getDueDate(),
-                task.getPointsValue(),
-                task.getAllowedAttempts(),
-                task.getIsGroupTask(),
-                task.getVisibleToParents(),
-                task.getStatus(),
-                task.getCreatedAt(),
-                task.getUpdatedAt()
-        );
+    @Override
+    public Mono<TaskResponseDTO> restore(Long id) {
+        return taskRepository.findById(id)
+                .switchIfEmpty(Mono.error(new NotFoundException("Task not found with id: " + id)))
+                .flatMap(task -> {
+                    task.setIsDeleted(false);
+                    task.setDeletedAt(null);
+                    task.setUpdatedAt(OffsetDateTime.now());
+                    return taskRepository.save(task);
+                })
+                .flatMap(this::toResponseWithFiles);
+    }
+
+    private Mono<TaskResponseDTO> toResponseWithFiles(Task task) {
+        return taskFileRepository.findByTaskId(task.getId())
+                .map(file -> new TaskFileDTO(
+                        file.getId(),
+                        file.getFileName(),
+                        file.getFileUrl(),
+                        file.getFileType(),
+                        file.getFileSizeKb()
+                ))
+                .collectList()
+                .map(files -> new TaskResponseDTO(
+                        task.getId(),
+                        task.getTitle(),
+                        task.getDescription(),
+                        task.getInstructions(),
+                        task.getClassId(),
+                        task.getCriterionId(),
+                        task.getPointsValue(),
+                        task.getDueDate(),
+                        task.getScheduledPublishDate(),
+                        task.getScheduledCloseDate(),
+                        task.getStatus(),
+                        task.getIsDeleted(),
+                        task.getCreatedBy(),
+                        task.getCreatedAt(),
+                        task.getUpdatedAt(),
+                        task.getDeletedAt(),
+                        files
+                ));
     }
 }
