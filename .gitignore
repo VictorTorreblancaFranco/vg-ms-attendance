@@ -36,3 +36,8 @@ build/
 .env
 .env.local
 .env.*.local
+*.csv
+*.xlsx
+test.txt
+prueba.txt
+*.bak
