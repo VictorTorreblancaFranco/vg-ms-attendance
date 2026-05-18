@@ -11,10 +11,21 @@ public class WebClientConfig {
     @Value("${services.academic-url}")
     private String academicServiceUrl;
 
+    @Value("${services.student-url}")
+    private String studentServiceUrl;
+
     @Bean
     public WebClient academicWebClient() {
         return WebClient.builder()
                 .baseUrl(academicServiceUrl)
+                .defaultHeader("Content-Type", "application/json")
+                .build();
+    }
+
+    @Bean
+    public WebClient studentWebClient() {
+        return WebClient.builder()
+                .baseUrl(studentServiceUrl)
                 .defaultHeader("Content-Type", "application/json")
                 .build();
     }

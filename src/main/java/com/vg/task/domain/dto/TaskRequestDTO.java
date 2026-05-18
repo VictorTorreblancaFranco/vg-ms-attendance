@@ -1,33 +1,29 @@
 package com.vg.task.domain.dto;
 
-import jakarta.validation.constraints.Future;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Size;
-
-import java.time.LocalDate;
+import java.time.OffsetDateTime;
+import java.util.List;
 
 public record TaskRequestDTO(
-    @NotNull(message = "Class ID is required")
-    Integer classId,
-    
-    Integer criterionId,
-    
     @NotBlank(message = "Title is required")
-    @Size(max = 255, message = "Title max 255 characters")
     String title,
     
     String description,
     String instructions,
     
-    @Future(message = "Due date must be in the future")
-    LocalDate dueDate,
+    @NotNull(message = "Class ID is required")
+    Integer classId,
+    
+    Integer criterionId,
     
     Double pointsValue,
     
-    Short allowedAttempts,
+    @NotNull(message = "Due date is required")
+    OffsetDateTime dueDate,
     
-    Boolean isGroupTask,
+    @NotNull(message = "Created by is required")
+    Integer createdBy,
     
-    Boolean visibleToParents
+    List<TaskFileDTO> files
 ) {}

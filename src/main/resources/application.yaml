@@ -9,18 +9,23 @@ spring:
     url: ${DB_URL}
     username: ${DB_USERNAME}
     password: ${DB_PASSWORD}
+    pool:
+      initial-size: 2
+      max-size: 10
+      max-idle-time: 30m
+      max-life-time: 60m
+      validation-query: SELECT 1
 
   sql:
     init:
       mode: always
       schema-locations: classpath:sql/schema.sql
 
-# URLs de otros microservicios
 services:
   academic-url: ${ACADEMIC_SERVICE_URL:http://localhost:8082}
   student-url: ${STUDENT_SERVICE_URL:http://localhost:8083}
 
 logging:
   level:
-    org.springframework.r2dbc: ${LOGGING_LEVEL_ORG_SPRING_R2DBC:DEBUG}
-    com.vg.task: ${LOGGING_LEVEL_COM_VG_TASK:DEBUG}
+    org.springframework.r2dbc: INFO
+    com.vg.task: DEBUG

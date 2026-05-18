@@ -12,18 +12,20 @@ import static org.springframework.web.reactive.function.server.RouterFunctions.r
 @Configuration
 public class TaskRouter {
 
-    private static final String API_PATH = "/api/tasks";
+    private static final String API_V1 = "/api/v1/task";
 
     @Bean
     public RouterFunction<ServerResponse> taskRoutes(TaskHandler handler) {
-        return route(GET(API_PATH), handler::findAll)
-                .andRoute(GET(API_PATH + "/{id}"), handler::findById)
-                .andRoute(GET(API_PATH + "/class/{classId}"), handler::findByClassId)
-                .andRoute(GET(API_PATH + "/status/{status}"), handler::findByStatus)
-                .andRoute(POST(API_PATH), handler::create)
-                .andRoute(PUT(API_PATH + "/{id}"), handler::update)
-                .andRoute(DELETE(API_PATH + "/{id}"), handler::delete)
-                .andRoute(PATCH(API_PATH + "/{id}/publish"), handler::publish)
-                .andRoute(PATCH(API_PATH + "/{id}/close"), handler::close);
+        return route(GET(API_V1), handler::findAll)
+                .andRoute(GET(API_V1 + "/{id}"), handler::findById)
+                .andRoute(GET(API_V1 + "/status/{status}"), handler::findByStatus)
+                .andRoute(GET(API_V1 + "/class/{classId}"), handler::findByClassId)
+                .andRoute(POST(API_V1 + "/save"), handler::save)
+                .andRoute(PUT(API_V1 + "/update"), handler::update)
+                .andRoute(DELETE(API_V1 + "/{id}"), handler::delete)
+                .andRoute(PATCH(API_V1 + "/activate/{id}"), handler::activate)
+                .andRoute(PATCH(API_V1 + "/deactivate/{id}"), handler::deactivate)
+                .andRoute(PATCH(API_V1 + "/close/{id}"), handler::close)
+                .andRoute(PATCH(API_V1 + "/restore/{id}"), handler::restore);
     }
 }
