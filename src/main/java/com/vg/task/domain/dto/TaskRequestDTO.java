@@ -22,6 +22,10 @@ public record TaskRequestDTO(
     @NotNull(message = "Due date is required")
     OffsetDateTime dueDate,
     
+    OffsetDateTime scheduledPublishDate,
+    
+    OffsetDateTime scheduledCloseDate,
+    
     @NotNull(message = "Created by is required")
     Integer createdBy,
     
