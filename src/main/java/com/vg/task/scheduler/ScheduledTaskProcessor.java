@@ -23,9 +23,10 @@ public class ScheduledTaskProcessor {
     public void processScheduledTasks() {
         OffsetDateTime now = OffsetDateTime.now();
         
+        // Publicar tareas programadas
         taskRepository.findByScheduledPublishDateBeforeAndStatusAndIsDeletedFalse(now, "draft")
+                .doOnNext(task -> log.info("Auto-publishing task: {}", task.getId()))
                 .flatMap(task -> {
-                    log.info("Auto-publishing task: {}", task.getId());
                     task.setStatus("published");
                     task.setUpdatedAt(now);
                     return taskRepository.save(task)
@@ -39,9 +40,10 @@ public class ScheduledTaskProcessor {
                 })
                 .subscribe();
         
+        // Cerrar tareas programadas
         taskRepository.findByScheduledCloseDateBeforeAndStatusAndIsDeletedFalse(now, "published")
+                .doOnNext(task -> log.info("Auto-closing task: {}", task.getId()))
                 .flatMap(task -> {
-                    log.info("Auto-closing task: {}", task.getId());
                     task.setStatus("closed");
                     task.setUpdatedAt(now);
                     return taskRepository.save(task)
@@ -55,8 +57,10 @@ public class ScheduledTaskProcessor {
                 })
                 .subscribe();
         
+        // Notificar vencimiento 3 horas antes
         OffsetDateTime threeHoursFromNow = now.plusHours(3);
         taskRepository.findByDueDateBeforeAndStatusAndIsDeletedFalse(threeHoursFromNow, "published")
+                .doOnNext(task -> log.info("Task will close soon: {}", task.getId()))
                 .flatMap(task -> notificationService.send(
                         task.getCreatedBy(),
                         task.getId(),

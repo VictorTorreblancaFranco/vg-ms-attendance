@@ -12,7 +12,7 @@ import static org.springframework.web.reactive.function.server.RouterFunctions.r
 @Configuration
 public class SubmissionRouter {
 
-    private static final String API_V1 = "/api/v1/task/submissions";
+    private static final String API_V1 = "/api/v1/submissions";
 
     @Bean
     public RouterFunction<ServerResponse> submissionRoutes(SubmissionHandler handler) {
@@ -22,6 +22,8 @@ public class SubmissionRouter {
                 .andRoute(GET(API_V1 + "/student/{studentId}"), handler::findByStudentId)
                 .andRoute(POST(API_V1 + "/submit"), handler::submit)
                 .andRoute(PUT(API_V1 + "/{id}/grade"), handler::grade)
+                .andRoute(PUT(API_V1 + "/{id}/rubric"), handler::gradeWithRubric)
+                .andRoute(PATCH(API_V1 + "/{id}/reattempt"), handler::allowReattempt)
                 .andRoute(PATCH(API_V1 + "/{id}/excuse"), handler::excuse)
                 .andRoute(DELETE(API_V1 + "/{id}"), handler::delete);
     }

@@ -1,8 +1,6 @@
 package com.vg.task.web.handler;
 
-import com.vg.task.domain.dto.GradeRequestDTO;
-import com.vg.task.domain.dto.SubmissionRequestDTO;
-import com.vg.task.domain.dto.SubmissionResponseDTO;
+import com.vg.task.domain.dto.*;
 import com.vg.task.service.SubmissionService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -63,6 +61,25 @@ public class SubmissionHandler {
         Long id = Long.parseLong(request.pathVariable("id"));
         return request.bodyToMono(GradeRequestDTO.class)
                 .flatMap(dto -> submissionService.grade(id, dto))
+                .flatMap(submission -> ServerResponse.ok()
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .bodyValue(submission));
+    }
+
+    public Mono<ServerResponse> gradeWithRubric(ServerRequest request) {
+        Long id = Long.parseLong(request.pathVariable("id"));
+        return request.bodyToMono(RubricGradeRequestDTO.class)
+                .flatMap(dto -> submissionService.gradeWithRubric(id, dto))
+                .flatMap(submission -> ServerResponse.ok()
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .bodyValue(submission));
+    }
+
+    public Mono<ServerResponse> allowReattempt(ServerRequest request) {
+        Long id = Long.parseLong(request.pathVariable("id"));
+        String maxParam = request.queryParam("max").orElse("1");
+        Integer maxAttempts = Integer.parseInt(maxParam);
+        return submissionService.allowReattempt(id, maxAttempts)
                 .flatMap(submission -> ServerResponse.ok()
                         .contentType(MediaType.APPLICATION_JSON)
                         .bodyValue(submission));

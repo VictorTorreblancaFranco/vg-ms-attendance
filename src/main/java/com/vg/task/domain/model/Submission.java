@@ -42,6 +42,21 @@ public class Submission {
     @Column("justification_reason")
     private String justificationReason;
 
+    @Column("private_comment")
+    private String privateComment;
+
+    @Column("public_comment")
+    private String publicComment;
+
+    @Column("reattempt_count")
+    private Integer reattemptCount;
+
+    @Column("reattempt_allowed")
+    private Boolean reattemptAllowed;
+
+    @Column("max_reattempts")
+    private Integer maxReattempts;
+
     @Column("created_at")
     private OffsetDateTime createdAt;
 

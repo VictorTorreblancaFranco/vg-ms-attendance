@@ -11,6 +11,8 @@ public record SubmissionRequestDTO(
     Integer studentId,
     
     String justificationReason,
+    String privateComment,
+    String publicComment,
     
     List<SubmissionFileDTO> files
 ) {}

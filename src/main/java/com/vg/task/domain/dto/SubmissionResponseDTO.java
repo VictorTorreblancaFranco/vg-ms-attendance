@@ -14,7 +14,14 @@ public record SubmissionResponseDTO(
     Integer gradedBy,
     OffsetDateTime gradedAt,
     String justificationReason,
+    String privateComment,
+    String publicComment,
+    Integer reattemptCount,
+    Boolean reattemptAllowed,
+    Integer maxReattempts,
     OffsetDateTime createdAt,
     OffsetDateTime updatedAt,
-    List<SubmissionFileDTO> files
+    List<SubmissionFileDTO> files,
+    List<CommentFileDTO> commentFiles,
+    List<RubricScoreDTO> rubricScores
 ) {}
