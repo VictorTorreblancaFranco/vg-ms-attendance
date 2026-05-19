@@ -1,6 +1,7 @@
 package com.vg.task.service;
 
 import com.vg.task.domain.dto.GradeRequestDTO;
+import com.vg.task.domain.dto.RubricGradeRequestDTO;
 import com.vg.task.domain.dto.SubmissionRequestDTO;
 import com.vg.task.domain.dto.SubmissionResponseDTO;
 import reactor.core.publisher.Flux;
@@ -13,6 +14,8 @@ public interface SubmissionService {
     Mono<SubmissionResponseDTO> findById(Long id);
     Mono<SubmissionResponseDTO> submit(SubmissionRequestDTO request);
     Mono<SubmissionResponseDTO> grade(Long id, GradeRequestDTO request);
+    Mono<SubmissionResponseDTO> gradeWithRubric(Long id, RubricGradeRequestDTO request);
+    Mono<SubmissionResponseDTO> allowReattempt(Long id, Integer maxAttempts);
     Mono<SubmissionResponseDTO> excuse(Long id, String reason);
     Mono<Void> delete(Long id);
 }
