@@ -8,4 +8,5 @@ import reactor.core.publisher.Flux;
 @Repository
 public interface CommentFileRepository extends ReactiveCrudRepository<CommentFile, Long> {
     Flux<CommentFile> findBySubmissionId(Long submissionId);
+    Flux<CommentFile> findBySubmissionIdAndActiveTrue(Long submissionId);
 }

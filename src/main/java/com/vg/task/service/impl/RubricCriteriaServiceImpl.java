@@ -41,7 +41,7 @@ public class RubricCriteriaServiceImpl implements RubricCriteriaService {
 
     @Override
     public Flux<RubricCriteriaResponseDTO> findByTaskId(Long taskId) {
-        return rubricCriteriaRepository.findByTaskIdOrderBySortOrderAsc(taskId)
+        return rubricCriteriaRepository.findByTaskIdAndActiveTrueOrderBySortOrderAsc(taskId)
                 .map(this::toResponse);
     }
 

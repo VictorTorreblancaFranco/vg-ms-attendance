@@ -254,9 +254,9 @@ public class SubmissionServiceImpl implements SubmissionService {
 
     private Mono<SubmissionResponseDTO> toResponse(Submission sub) {
         return Mono.zip(
-            submissionFileRepository.findBySubmissionId(sub.getId()).collectList(),
-            commentFileRepository.findBySubmissionId(sub.getId()).collectList(),
-            rubricScoreRepository.findBySubmissionId(sub.getId()).collectList()
+            submissionFileRepository.findBySubmissionIdAndActiveTrue(sub.getId()).collectList(),
+            commentFileRepository.findBySubmissionIdAndActiveTrue(sub.getId()).collectList(),
+            rubricScoreRepository.findBySubmissionIdAndActiveTrue(sub.getId()).collectList()
         ).map(tuple -> {
             List<SubmissionFileDTO> files = tuple.getT1().stream()
                     .map(f -> new SubmissionFileDTO(f.getId(), f.getFileName(), f.getFileUrl(), f.getFileType(), f.getFileSizeKb()))

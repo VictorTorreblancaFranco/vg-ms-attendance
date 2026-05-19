@@ -7,7 +7,6 @@ import lombok.NoArgsConstructor;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.relational.core.mapping.Column;
 import org.springframework.data.relational.core.mapping.Table;
-
 import java.time.OffsetDateTime;
 
 @Data
@@ -16,25 +15,20 @@ import java.time.OffsetDateTime;
 @AllArgsConstructor
 @Table("submission_files")
 public class SubmissionFile {
-
     @Id
     private Long id;
-
     @Column("submission_id")
     private Long submissionId;
-
     @Column("file_name")
     private String fileName;
-
     @Column("file_url")
     private String fileUrl;
-
     @Column("file_type")
     private String fileType;
-
     @Column("file_size_kb")
     private Integer fileSizeKb;
-
     @Column("created_at")
     private OffsetDateTime createdAt;
+    @Column("active")
+    private Boolean active;
 }

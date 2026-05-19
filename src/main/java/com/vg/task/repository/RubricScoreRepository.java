@@ -9,5 +9,6 @@ import reactor.core.publisher.Mono;
 @Repository
 public interface RubricScoreRepository extends ReactiveCrudRepository<RubricScore, Long> {
     Flux<RubricScore> findBySubmissionId(Long submissionId);
+    Flux<RubricScore> findBySubmissionIdAndActiveTrue(Long submissionId);
     Mono<RubricScore> findBySubmissionIdAndCriterionId(Long submissionId, Long criterionId);
 }

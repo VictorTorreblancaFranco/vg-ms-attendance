@@ -27,4 +27,6 @@ public class RubricScore {
     private OffsetDateTime createdAt;
     @Column("updated_at")
     private OffsetDateTime updatedAt;
+    @Column("active")
+    private Boolean active;
 }

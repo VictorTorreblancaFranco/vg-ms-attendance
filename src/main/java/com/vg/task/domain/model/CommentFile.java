@@ -29,4 +29,6 @@ public class CommentFile {
     private Integer fileSizeKb;
     @Column("created_at")
     private OffsetDateTime createdAt;
+    @Column("active")
+    private Boolean active;
 }

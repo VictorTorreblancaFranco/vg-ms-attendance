@@ -28,4 +28,6 @@ public class RubricCriteria {
     private Integer sortOrder;
     @Column("created_at")
     private OffsetDateTime createdAt;
+    @Column("active")
+    private Boolean active;
 }

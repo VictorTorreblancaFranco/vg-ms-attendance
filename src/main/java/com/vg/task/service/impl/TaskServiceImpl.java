@@ -344,7 +344,7 @@ public class TaskServiceImpl implements TaskService {
     }
 
     private Mono<TaskResponseDTO> toResponseWithFiles(Task task) {
-        return taskFileRepository.findByTaskId(task.getId())
+        return taskFileRepository.findByTaskIdAndActiveTrue(task.getId())
                 .map(file -> new TaskFileDTO(
                         file.getId(),
                         file.getFileName(),

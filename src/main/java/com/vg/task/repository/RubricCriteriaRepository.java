@@ -8,4 +8,5 @@ import reactor.core.publisher.Flux;
 @Repository
 public interface RubricCriteriaRepository extends ReactiveCrudRepository<RubricCriteria, Long> {
     Flux<RubricCriteria> findByTaskIdOrderBySortOrderAsc(Long taskId);
+    Flux<RubricCriteria> findByTaskIdAndActiveTrueOrderBySortOrderAsc(Long taskId);
 }

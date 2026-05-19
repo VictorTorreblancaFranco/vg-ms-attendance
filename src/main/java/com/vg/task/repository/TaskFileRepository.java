@@ -8,4 +8,5 @@ import reactor.core.publisher.Flux;
 @Repository
 public interface TaskFileRepository extends ReactiveCrudRepository<TaskFile, Long> {
     Flux<TaskFile> findByTaskId(Long taskId);
+    Flux<TaskFile> findByTaskIdAndActiveTrue(Long taskId);
 }

@@ -8,4 +8,5 @@ import reactor.core.publisher.Flux;
 @Repository
 public interface SubmissionFileRepository extends ReactiveCrudRepository<SubmissionFile, Long> {
     Flux<SubmissionFile> findBySubmissionId(Long submissionId);
+    Flux<SubmissionFile> findBySubmissionIdAndActiveTrue(Long submissionId);
 }
