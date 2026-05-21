@@ -1,7 +1,7 @@
 package com.vg.task.service.impl;
 
 import com.vg.task.application.port.input.TaskUseCase;
-import com.vg.task.application.port.output.AcademicServicePort;
+import com.vg.task.client.ResilientAcademicClient;
 import com.vg.task.domain.model.Task;
 import com.vg.task.domain.dto.TaskFilterDTO;
 import com.vg.task.domain.dto.PageResponseDTO;
@@ -24,7 +24,7 @@ import java.util.List;
 public class TaskServiceImpl implements TaskUseCase {
     
     private final TaskRepository taskRepository;
-    private final AcademicServicePort academicService;
+    private final ResilientAcademicClient resilientAcademicClient;
     
     @Override
     public Flux<Task> findAll() {
@@ -98,9 +98,15 @@ public class TaskServiceImpl implements TaskUseCase {
             return Mono.error(new BadRequestException("La fecha de entrega no puede ser en el pasado"));
         }
         
-        return academicService.validateClass(task.getClassId())
-                .onErrorReturn(false)
+        // Usar el cliente resiliente con reintentos y circuit breaker
+        return resilientAcademicClient.validateClassWithRetry(task.getClassId())
                 .flatMap(valid -> {
+                    if (!valid) {
+                        return Mono.error(new BadRequestException(
+                            "La clase " + task.getClassId() + " no es válida. " +
+                            "El servicio académico no está disponible o la clase no existe."
+                        ));
+                    }
                     task.setStatus("draft");
                     task.setIsDeleted(false);
                     task.setCreatedAt(OffsetDateTime.now());
