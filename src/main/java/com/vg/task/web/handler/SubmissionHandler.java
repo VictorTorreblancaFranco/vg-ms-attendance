@@ -1,7 +1,8 @@
 package com.vg.task.web.handler;
 
+import com.vg.task.application.port.input.SubmissionUseCase;
 import com.vg.task.domain.dto.*;
-import com.vg.task.service.SubmissionService;
+import com.vg.task.mapper.SubmissionMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -16,20 +17,20 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class SubmissionHandler {
 
-    private final SubmissionService submissionService;
+    private final SubmissionUseCase submissionUseCase;
+    private final SubmissionMapper mapper;
 
     public Mono<ServerResponse> findAll(ServerRequest request) {
         return ServerResponse.ok()
                 .contentType(MediaType.APPLICATION_JSON)
-                .body(submissionService.findAll(), SubmissionResponseDTO.class);
+                .body(submissionUseCase.findAll().map(mapper::toResponse), SubmissionResponseDTO.class);
     }
 
     public Mono<ServerResponse> findById(ServerRequest request) {
         Long id = Long.parseLong(request.pathVariable("id"));
-        return submissionService.findById(id)
-                .flatMap(submission -> ServerResponse.ok()
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .bodyValue(submission))
+        return submissionUseCase.findById(id)
+                .map(mapper::toResponse)
+                .flatMap(response -> ServerResponse.ok().bodyValue(response))
                 .switchIfEmpty(ServerResponse.notFound().build());
     }
 
@@ -37,22 +38,22 @@ public class SubmissionHandler {
         Long taskId = Long.parseLong(request.pathVariable("taskId"));
         return ServerResponse.ok()
                 .contentType(MediaType.APPLICATION_JSON)
-                .body(submissionService.findByTaskId(taskId), SubmissionResponseDTO.class);
+                .body(submissionUseCase.findByTaskId(taskId).map(mapper::toResponse), SubmissionResponseDTO.class);
     }
 
     public Mono<ServerResponse> findByStudentId(ServerRequest request) {
         Integer studentId = Integer.parseInt(request.pathVariable("studentId"));
         return ServerResponse.ok()
                 .contentType(MediaType.APPLICATION_JSON)
-                .body(submissionService.findByStudentId(studentId), SubmissionResponseDTO.class);
+                .body(submissionUseCase.findByStudentId(studentId).map(mapper::toResponse), SubmissionResponseDTO.class);
     }
 
     public Mono<ServerResponse> submit(ServerRequest request) {
         return request.bodyToMono(SubmissionRequestDTO.class)
-                .flatMap(submissionService::submit)
-                .flatMap(submission -> ServerResponse.status(HttpStatus.CREATED)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .bodyValue(submission))
+                .map(mapper::toDomain)
+                .flatMap(submissionUseCase::submit)
+                .map(mapper::toResponse)
+                .flatMap(response -> ServerResponse.status(HttpStatus.CREATED).bodyValue(response))
                 .onErrorResume(IllegalStateException.class, e ->
                         ServerResponse.badRequest().bodyValue(Map.of("error", e.getMessage())));
     }
@@ -60,43 +61,39 @@ public class SubmissionHandler {
     public Mono<ServerResponse> grade(ServerRequest request) {
         Long id = Long.parseLong(request.pathVariable("id"));
         return request.bodyToMono(GradeRequestDTO.class)
-                .flatMap(dto -> submissionService.grade(id, dto))
-                .flatMap(submission -> ServerResponse.ok()
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .bodyValue(submission));
+                .flatMap(dto -> submissionUseCase.grade(id, dto))
+                .map(mapper::toResponse)
+                .flatMap(response -> ServerResponse.ok().bodyValue(response));
     }
 
     public Mono<ServerResponse> gradeWithRubric(ServerRequest request) {
         Long id = Long.parseLong(request.pathVariable("id"));
         return request.bodyToMono(RubricGradeRequestDTO.class)
-                .flatMap(dto -> submissionService.gradeWithRubric(id, dto))
-                .flatMap(submission -> ServerResponse.ok()
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .bodyValue(submission));
+                .flatMap(dto -> submissionUseCase.gradeWithRubric(id, dto))
+                .map(mapper::toResponse)
+                .flatMap(response -> ServerResponse.ok().bodyValue(response));
     }
 
     public Mono<ServerResponse> allowReattempt(ServerRequest request) {
         Long id = Long.parseLong(request.pathVariable("id"));
         String maxParam = request.queryParam("max").orElse("1");
         Integer maxAttempts = Integer.parseInt(maxParam);
-        return submissionService.allowReattempt(id, maxAttempts)
-                .flatMap(submission -> ServerResponse.ok()
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .bodyValue(submission));
+        return submissionUseCase.allowReattempt(id, maxAttempts)
+                .map(mapper::toResponse)
+                .flatMap(response -> ServerResponse.ok().bodyValue(response));
     }
 
     public Mono<ServerResponse> excuse(ServerRequest request) {
         Long id = Long.parseLong(request.pathVariable("id"));
         String reason = request.queryParam("reason").orElse("No reason provided");
-        return submissionService.excuse(id, reason)
-                .flatMap(submission -> ServerResponse.ok()
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .bodyValue(submission));
+        return submissionUseCase.excuse(id, reason)
+                .map(mapper::toResponse)
+                .flatMap(response -> ServerResponse.ok().bodyValue(response));
     }
 
     public Mono<ServerResponse> delete(ServerRequest request) {
         Long id = Long.parseLong(request.pathVariable("id"));
-        return submissionService.delete(id)
+        return submissionUseCase.delete(id)
                 .then(ServerResponse.noContent().build());
     }
 }

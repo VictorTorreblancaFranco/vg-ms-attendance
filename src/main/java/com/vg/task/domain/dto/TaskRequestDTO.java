@@ -29,5 +29,7 @@ public record TaskRequestDTO(
     @NotNull(message = "Created by is required")
     Integer createdBy,
     
-    List<TaskFileDTO> files
+    List<TaskFileDTO> files,
+    
+    String status  // Campo agregado para compatibilidad
 ) {}

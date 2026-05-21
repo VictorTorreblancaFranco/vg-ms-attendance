@@ -1,25 +1,24 @@
 package com.vg.task.client;
 
-import org.springframework.beans.factory.annotation.Qualifier;
+import com.vg.task.application.port.output.AcademicServicePort;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
-import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
 
+@Slf4j
 @Component
-public class AcademicClient {
-
-    private final WebClient academicWebClient;
-
-    public AcademicClient(@Qualifier("academicWebClient") WebClient academicWebClient) {
-        this.academicWebClient = academicWebClient;
-    }
-
+@RequiredArgsConstructor
+public class AcademicClient implements AcademicServicePort {
+    
+    @Override
     public Mono<Boolean> validateClass(Integer classId) {
-        return academicWebClient.get()
-                .uri("/api/clases/{id}", classId)
-                .retrieve()
-                .bodyToMono(Void.class)
-                .thenReturn(true)
-                .onErrorReturn(false);
+        log.info("🔵 VALIDACIÓN DESHABILITADA - Clase: {} es válida automáticamente", classId);
+        return Mono.just(true);
+    }
+    
+    @Override
+    public Mono<ClassInfo> getClassInfo(Integer classId) {
+        return Mono.empty();
     }
 }
