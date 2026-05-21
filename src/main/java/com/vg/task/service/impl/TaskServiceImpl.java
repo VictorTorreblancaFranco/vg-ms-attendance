@@ -4,6 +4,7 @@ import com.vg.task.application.port.input.TaskUseCase;
 import com.vg.task.application.port.output.AcademicServicePort;
 import com.vg.task.domain.model.Task;
 import com.vg.task.domain.dto.TaskFilterDTO;
+import com.vg.task.domain.dto.PageResponseDTO;
 import com.vg.task.exception.BadRequestException;
 import com.vg.task.exception.NotFoundException;
 import com.vg.task.repository.TaskRepository;
@@ -14,6 +15,8 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.time.OffsetDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Slf4j
 @Service
@@ -27,6 +30,24 @@ public class TaskServiceImpl implements TaskUseCase {
     public Flux<Task> findAll() {
         return taskRepository.findAll()
                 .filter(task -> !Boolean.TRUE.equals(task.getIsDeleted()));
+    }
+    
+    @Override
+    public Mono<PageResponseDTO<Task>> findAllPaged(int page, int size) {
+        int offset = page * size;
+        return taskRepository.findAll()
+                .filter(task -> !Boolean.TRUE.equals(task.getIsDeleted()))
+                .collectList()
+                .flatMap(allTasks -> {
+                    int total = allTasks.size();
+                    int start = Math.min(offset, total);
+                    int end = Math.min(offset + size, total);
+                    List<Task> pagedTasks = new ArrayList<>();
+                    if (start < end) {
+                        pagedTasks = allTasks.subList(start, end);
+                    }
+                    return Mono.just(PageResponseDTO.of(pagedTasks, page, size, total));
+                });
     }
     
     @Override

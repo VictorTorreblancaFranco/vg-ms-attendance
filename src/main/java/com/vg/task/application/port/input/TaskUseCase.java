@@ -2,6 +2,7 @@ package com.vg.task.application.port.input;
 
 import com.vg.task.domain.model.Task;
 import com.vg.task.domain.dto.TaskFilterDTO;
+import com.vg.task.domain.dto.PageResponseDTO;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
@@ -20,4 +21,5 @@ public interface TaskUseCase {
     Mono<Task> restore(Long id);
     Mono<byte[]> exportToCsv(TaskFilterDTO filter);
     Mono<byte[]> exportToExcel(TaskFilterDTO filter);
+    Mono<PageResponseDTO<Task>> findAllPaged(int page, int size);
 }

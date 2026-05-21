@@ -17,6 +17,7 @@ public class TaskRouter {
     @Bean
     public RouterFunction<ServerResponse> taskRoutes(TaskHandler handler) {
         return route(GET(API_V1), handler::findAll)
+                .andRoute(GET(API_V1 + "/paged"), handler::findAllPaged)
                 .andRoute(GET(API_V1 + "/export/csv"), handler::exportCsv)
                 .andRoute(GET(API_V1 + "/export/excel"), handler::exportExcel)
                 .andRoute(GET(API_V1 + "/filter"), handler::filter)

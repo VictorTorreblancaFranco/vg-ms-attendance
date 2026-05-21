@@ -5,6 +5,7 @@ import com.vg.task.domain.dto.TaskFilterDTO;
 import com.vg.task.domain.dto.TaskRequestDTO;
 import com.vg.task.domain.dto.TaskResponseDTO;
 import com.vg.task.domain.dto.UpdateTaskRequestDTO;
+import com.vg.task.domain.dto.PageResponseDTO;
 import com.vg.task.mapper.TaskMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -28,6 +29,23 @@ public class TaskHandler {
         return ServerResponse.ok()
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(taskUseCase.findAll().map(mapper::toResponse), TaskResponseDTO.class);
+    }
+    
+    public Mono<ServerResponse> findAllPaged(ServerRequest request) {
+        int page = Integer.parseInt(request.queryParam("page").orElse("0"));
+        int size = Integer.parseInt(request.queryParam("size").orElse("20"));
+        return ServerResponse.ok()
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(taskUseCase.findAllPaged(page, size)
+                    .map(pageResponse -> new PageResponseDTO<>(
+                        pageResponse.content().stream().map(mapper::toResponse).toList(),
+                        pageResponse.pageNumber(),
+                        pageResponse.pageSize(),
+                        pageResponse.totalElements(),
+                        pageResponse.totalPages(),
+                        pageResponse.first(),
+                        pageResponse.last()
+                    )), PageResponseDTO.class);
     }
 
     public Mono<ServerResponse> findById(ServerRequest request) {
@@ -61,7 +79,6 @@ public class TaskHandler {
                 request.queryParam("toDate").map(OffsetDateTime::parse).orElse(null),
                 false
         );
-        
         return ServerResponse.ok()
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(taskUseCase.filter(filter).map(mapper::toResponse), TaskResponseDTO.class);

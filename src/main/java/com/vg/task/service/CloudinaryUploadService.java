@@ -2,20 +2,20 @@ package com.vg.task.service;
 
 import com.cloudinary.Cloudinary;
 import com.cloudinary.utils.ObjectUtils;
+import com.vg.task.constants.FileConstants;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.buffer.DataBufferUtils;
 import org.springframework.http.codec.multipart.FilePart;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Map;
 import java.util.UUID;
 
+@Slf4j
 @Service
 public class CloudinaryUploadService {
 
@@ -34,14 +34,31 @@ public class CloudinaryUploadService {
     }
 
     public Mono<String> upload(FilePart filePart, String folder) {
+        // Validar nombre de archivo
+        String fileName = filePart.filename();
+        if (!FileConstants.isAllowedFileType(fileName)) {
+            String allowedTypes = String.join(", ", FileConstants.ALLOWED_FILE_TYPES);
+            return Mono.error(new IllegalArgumentException(
+                "Tipo de archivo no permitido. Permitidos: " + allowedTypes
+            ));
+        }
+        
         return DataBufferUtils.join(filePart.content())
                 .flatMap(dataBuffer -> {
                     byte[] bytes = new byte[dataBuffer.readableByteCount()];
                     dataBuffer.read(bytes);
                     DataBufferUtils.release(dataBuffer);
                     
+                    // Validar tamaño
+                    long fileSize = bytes.length;
+                    if (fileSize > FileConstants.MAX_FILE_SIZE_BYTES) {
+                        return Mono.error(new IllegalArgumentException(
+                            "El archivo excede el tamaño máximo de " + FileConstants.MAX_FILE_SIZE_MB + " MB"
+                        ));
+                    }
+                    
                     return Mono.fromCallable(() -> {
-                        Path tempFile = Files.createTempFile(UUID.randomUUID().toString(), filePart.filename());
+                        Path tempFile = Files.createTempFile(UUID.randomUUID().toString(), fileName);
                         Files.write(tempFile, bytes);
                         
                         Map params = ObjectUtils.asMap(
@@ -54,6 +71,7 @@ public class CloudinaryUploadService {
                         Files.delete(tempFile);
                         return (String) result.get("secure_url");
                     });
-                });
+                })
+                .doOnError(error -> log.error("Error al subir archivo {}: {}", fileName, error.getMessage()));
     }
 }
