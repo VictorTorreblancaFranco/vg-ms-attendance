@@ -18,11 +18,15 @@ public class AcademicClient implements AcademicServicePort {
     
     @Override
     public Mono<Boolean> validateClass(Integer classId) {
+        log.info("🔍 Validando clase {} contra academic-service", classId);
         return academicWebClient.get()
                 .uri("/api/clases/{id}", classId)
                 .retrieve()
-                .bodyToMono(Void.class)
-                .thenReturn(true)
+                .bodyToMono(ClassInfo.class)
+                .map(classInfo -> {
+                    log.info("✅ Clase {} encontrada: {}", classId, classInfo);
+                    return classInfo != null && Boolean.TRUE.equals(classInfo.activa());
+                })
                 .onErrorResume(e -> {
                     log.error("❌ Error validando clase {}: {}", classId, e.getMessage());
                     return Mono.just(false);
@@ -31,12 +35,13 @@ public class AcademicClient implements AcademicServicePort {
     
     @Override
     public Mono<ClassInfo> getClassInfo(Integer classId) {
+        log.info("🔍 Obteniendo info de clase {}", classId);
         return academicWebClient.get()
                 .uri("/api/clases/{id}", classId)
                 .retrieve()
                 .bodyToMono(ClassInfo.class)
                 .onErrorResume(e -> {
-                    log.error("❌ Error obteniendo información de clase {}: {}", classId, e.getMessage());
+                    log.error("❌ Error obteniendo clase {}: {}", classId, e.getMessage());
                     return Mono.empty();
                 });
     }

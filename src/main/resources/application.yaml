@@ -38,7 +38,6 @@ cloudinary:
   api-key: ${CLOUDINARY_API_KEY}
   api-secret: ${CLOUDINARY_API_SECRET}
 
-# Resilience4j Configuration
 resilience4j:
   retry:
     instances:
@@ -59,7 +58,6 @@ resilience4j:
         slow-call-duration-threshold: 5s
         slow-call-rate-threshold: 50
 
-# Actuator endpoints
 management:
   endpoints:
     web:
@@ -72,3 +70,23 @@ management:
   info:
     env:
       enabled: true
+
+springdoc:
+  api-docs:
+    path: /api-docs
+    enabled: true
+  swagger-ui:
+    path: /swagger-ui.html
+    enabled: true
+    operationsSorter: method
+    tagsSorter: alpha
+    tryItOutEnabled: true
+    filter: true
+    displayRequestDuration: true
+    doc-expansion: none
+  show-actuator: true
+  writer-with-default-pretty-printer: true
+  webflux:
+    functional-endpoints:
+      enabled: true
+      paths: /api/**
