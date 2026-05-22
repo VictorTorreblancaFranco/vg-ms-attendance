@@ -40,21 +40,22 @@ public class TaskHandler {
 
     private Mono<ServerResponse> checkRateLimit(ServerRequest request) {
         String clientIp = request.remoteAddress()
-            .map(addr -> addr.getAddress().getHostAddress())
-            .orElse("unknown");
-        
-        return rateLimitService.allowRequest(clientIp)
-            .flatMap(allowed -> {
-                if (!allowed) {
-                    return ServerResponse.status(429)
-                        .bodyValue(Map.of(
-                            "error", "Too Many Requests",
-                            "message", "Has excedido el límite de 10 peticiones por segundo",
-                            "status", 429
-                        ));
-                }
-                return Mono.empty();
-            });
+                .map(addr -> addr.getAddress().getHostAddress())
+                .orElse("unknown");
+        String path = request.path();
+
+        return rateLimitService.allowRequest(clientIp, path)
+                .flatMap(allowed -> {
+                    if (!allowed) {
+                        return ServerResponse.status(429)
+                                .bodyValue(Map.of(
+                                        "error", "Too Many Requests",
+                                        "message", "Has excedido el límite de peticiones para este endpoint",
+                                        "status", 429
+                                ));
+                    }
+                    return Mono.empty();
+                });
     }
 
     private Mono<ServerResponse> withRateLimit(ServerRequest request, Mono<ServerResponse> response) {
@@ -66,23 +67,23 @@ public class TaskHandler {
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(taskUseCase.findAll().map(mapper::toResponse), TaskResponseDTO.class));
     }
-    
+
     public Mono<ServerResponse> findAllPaged(ServerRequest request) {
         return withRateLimit(request, Mono.defer(() -> {
             int page = Integer.parseInt(request.queryParam("page").orElse("0"));
             int size = Integer.parseInt(request.queryParam("size").orElse("20"));
             return ServerResponse.ok()
-                .contentType(MediaType.APPLICATION_JSON)
-                .body(taskUseCase.findAllPaged(page, size)
-                    .map(pageResponse -> new PageResponseDTO<>(
-                        pageResponse.content().stream().map(mapper::toResponse).toList(),
-                        pageResponse.pageNumber(),
-                        pageResponse.pageSize(),
-                        pageResponse.totalElements(),
-                        pageResponse.totalPages(),
-                        pageResponse.first(),
-                        pageResponse.last()
-                    )), PageResponseDTO.class);
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(taskUseCase.findAllPaged(page, size)
+                            .map(pageResponse -> new PageResponseDTO<>(
+                                    pageResponse.content().stream().map(mapper::toResponse).toList(),
+                                    pageResponse.pageNumber(),
+                                    pageResponse.pageSize(),
+                                    pageResponse.totalElements(),
+                                    pageResponse.totalPages(),
+                                    pageResponse.first(),
+                                    pageResponse.last()
+                            )), PageResponseDTO.class);
         }));
     }
 
