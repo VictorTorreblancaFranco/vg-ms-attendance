@@ -8,6 +8,7 @@ import com.vg.task.domain.dto.PageResponseDTO;
 import com.vg.task.exception.BadRequestException;
 import com.vg.task.exception.NotFoundException;
 import com.vg.task.repository.TaskRepository;
+import com.vg.task.service.ExportService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -25,6 +26,7 @@ public class TaskServiceImpl implements TaskUseCase {
     
     private final TaskRepository taskRepository;
     private final ResilientAcademicClient resilientAcademicClient;
+    private final ExportService exportService;
     
     @Override
     public Flux<Task> findAll() {
@@ -98,14 +100,10 @@ public class TaskServiceImpl implements TaskUseCase {
             return Mono.error(new BadRequestException("La fecha de entrega no puede ser en el pasado"));
         }
         
-        // Usar el cliente resiliente con reintentos y circuit breaker
         return resilientAcademicClient.validateClassWithRetry(task.getClassId())
                 .flatMap(valid -> {
                     if (!valid) {
-                        return Mono.error(new BadRequestException(
-                            "La clase " + task.getClassId() + " no es válida. " +
-                            "El servicio académico no está disponible o la clase no existe."
-                        ));
+                        return Mono.error(new BadRequestException("La clase " + task.getClassId() + " no es válida"));
                     }
                     task.setStatus("draft");
                     task.setIsDeleted(false);
@@ -199,11 +197,17 @@ public class TaskServiceImpl implements TaskUseCase {
     
     @Override
     public Mono<byte[]> exportToCsv(TaskFilterDTO filter) {
-        return filter(filter).collectList().map(tasks -> "csv".getBytes());
+        log.info("📊 Exportando tareas a CSV");
+        return filter(filter)
+            .collectList()
+            .flatMap(exportService::exportToCsv);
     }
     
     @Override
     public Mono<byte[]> exportToExcel(TaskFilterDTO filter) {
-        return filter(filter).collectList().map(tasks -> "excel".getBytes());
+        log.info("📊 Exportando tareas a Excel");
+        return filter(filter)
+            .collectList()
+            .flatMap(exportService::exportToExcel);
     }
 }
