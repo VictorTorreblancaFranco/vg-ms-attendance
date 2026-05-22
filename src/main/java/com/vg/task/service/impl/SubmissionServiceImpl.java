@@ -6,6 +6,7 @@ import com.vg.task.application.port.output.StudentServicePort;
 import com.vg.task.domain.model.Submission;
 import com.vg.task.domain.dto.GradeRequestDTO;
 import com.vg.task.domain.dto.RubricGradeRequestDTO;
+import com.vg.task.domain.dto.PageResponseDTO;
 import com.vg.task.exception.NotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -14,6 +15,8 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.time.OffsetDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Slf4j
 @Service
@@ -40,8 +43,36 @@ public class SubmissionServiceImpl implements SubmissionUseCase {
     }
     
     @Override
+    public Mono<PageResponseDTO<Submission>> findByTaskIdPaged(Long taskId, int page, int size) {
+        int offset = page * size;
+        return submissionRepository.countByTaskId(taskId)
+            .flatMap(total -> {
+                if (total == 0) {
+                    return Mono.just(PageResponseDTO.of(new ArrayList<>(), page, size, total));
+                }
+                return submissionRepository.findByTaskId(taskId, page, size)
+                    .collectList()
+                    .map(submissions -> PageResponseDTO.of(submissions, page, size, total));
+            });
+    }
+    
+    @Override
     public Flux<Submission> findByStudentId(Integer studentId) {
         return submissionRepository.findByStudentId(studentId);
+    }
+    
+    @Override
+    public Mono<PageResponseDTO<Submission>> findByStudentIdPaged(Integer studentId, int page, int size) {
+        int offset = page * size;
+        return submissionRepository.countByStudentId(studentId)
+            .flatMap(total -> {
+                if (total == 0) {
+                    return Mono.just(PageResponseDTO.of(new ArrayList<>(), page, size, total));
+                }
+                return submissionRepository.findByStudentId(studentId, page, size)
+                    .collectList()
+                    .map(submissions -> PageResponseDTO.of(submissions, page, size, total));
+            });
     }
     
     @Override
@@ -51,7 +82,7 @@ public class SubmissionServiceImpl implements SubmissionUseCase {
     
     @Override
     public Mono<Submission> submit(Submission submission) {
-        return validateStudent(submission.getStudentId())
+        return studentService.validateStudent(submission.getStudentId())
                 .flatMap(valid -> {
                     if (!valid) {
                         return Mono.error(new NotFoundException("Student not found: " + submission.getStudentId()));
@@ -123,9 +154,5 @@ public class SubmissionServiceImpl implements SubmissionUseCase {
     @Override
     public Mono<Void> delete(Long id) {
         return submissionRepository.deleteById(id);
-    }
-    
-    private Mono<Boolean> validateStudent(Integer studentId) {
-        return studentService.validateStudent(studentId);
     }
 }

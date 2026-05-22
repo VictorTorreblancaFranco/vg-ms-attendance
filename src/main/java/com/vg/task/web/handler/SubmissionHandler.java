@@ -67,11 +67,47 @@ public class SubmissionHandler {
                 .body(submissionUseCase.findByTaskId(taskId).map(mapper::toResponse), SubmissionResponseDTO.class));
     }
 
+    public Mono<ServerResponse> findByTaskIdPaged(ServerRequest request) {
+        Long taskId = Long.parseLong(request.pathVariable("taskId"));
+        int page = Integer.parseInt(request.queryParam("page").orElse("0"));
+        int size = Integer.parseInt(request.queryParam("size").orElse("20"));
+        return withRateLimit(request, ServerResponse.ok()
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(submissionUseCase.findByTaskIdPaged(taskId, page, size)
+                    .map(pageResponse -> new PageResponseDTO<>(
+                        pageResponse.content().stream().map(mapper::toResponse).toList(),
+                        pageResponse.pageNumber(),
+                        pageResponse.pageSize(),
+                        pageResponse.totalElements(),
+                        pageResponse.totalPages(),
+                        pageResponse.first(),
+                        pageResponse.last()
+                    )), PageResponseDTO.class));
+    }
+
     public Mono<ServerResponse> findByStudentId(ServerRequest request) {
         Integer studentId = Integer.parseInt(request.pathVariable("studentId"));
         return withRateLimit(request, ServerResponse.ok()
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(submissionUseCase.findByStudentId(studentId).map(mapper::toResponse), SubmissionResponseDTO.class));
+    }
+
+    public Mono<ServerResponse> findByStudentIdPaged(ServerRequest request) {
+        Integer studentId = Integer.parseInt(request.pathVariable("studentId"));
+        int page = Integer.parseInt(request.queryParam("page").orElse("0"));
+        int size = Integer.parseInt(request.queryParam("size").orElse("20"));
+        return withRateLimit(request, ServerResponse.ok()
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(submissionUseCase.findByStudentIdPaged(studentId, page, size)
+                    .map(pageResponse -> new PageResponseDTO<>(
+                        pageResponse.content().stream().map(mapper::toResponse).toList(),
+                        pageResponse.pageNumber(),
+                        pageResponse.pageSize(),
+                        pageResponse.totalElements(),
+                        pageResponse.totalPages(),
+                        pageResponse.first(),
+                        pageResponse.last()
+                    )), PageResponseDTO.class));
     }
 
     public Mono<ServerResponse> submit(ServerRequest request) {

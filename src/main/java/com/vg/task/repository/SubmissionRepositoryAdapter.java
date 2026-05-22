@@ -4,6 +4,8 @@ import com.vg.task.application.port.output.SubmissionRepositoryPort;
 import com.vg.task.domain.model.Submission;
 import com.vg.task.mapper.SubmissionMapper;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -34,8 +36,22 @@ public class SubmissionRepositoryAdapter implements SubmissionRepositoryPort {
     }
     
     @Override
+    public Flux<Submission> findByTaskId(Long taskId, int page, int size) {
+        Pageable pageable = PageRequest.of(page, size);
+        return submissionRepository.findByTaskId(taskId, pageable)
+                .map(mapper::toDomain);
+    }
+    
+    @Override
     public Flux<Submission> findByStudentId(Integer studentId) {
         return submissionRepository.findByStudentId(studentId)
+                .map(mapper::toDomain);
+    }
+    
+    @Override
+    public Flux<Submission> findByStudentId(Integer studentId, int page, int size) {
+        Pageable pageable = PageRequest.of(page, size);
+        return submissionRepository.findByStudentId(studentId, pageable)
                 .map(mapper::toDomain);
     }
     
@@ -60,5 +76,15 @@ public class SubmissionRepositoryAdapter implements SubmissionRepositoryPort {
     @Override
     public Mono<Boolean> existsByTaskIdAndStudentId(Long taskId, Integer studentId) {
         return submissionRepository.existsByTaskIdAndStudentId(taskId, studentId);
+    }
+    
+    @Override
+    public Mono<Long> countByTaskId(Long taskId) {
+        return submissionRepository.countByTaskId(taskId);
+    }
+    
+    @Override
+    public Mono<Long> countByStudentId(Integer studentId) {
+        return submissionRepository.countByStudentId(studentId);
     }
 }

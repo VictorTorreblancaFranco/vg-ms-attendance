@@ -20,23 +20,10 @@ import java.util.UUID;
 public class CloudinaryUploadService {
 
     private final Cloudinary cloudinary;
+    private final VirusScanService virusScanService;
     
-    // Configuración de validación
     private static final long MAX_FILE_SIZE_MB = 10;
     private static final long MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
-    
-    private static final Set<String> ALLOWED_TYPES = Set.of(
-        "application/pdf",
-        "application/msword",
-        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-        "image/jpeg",
-        "image/png",
-        "image/jpg",
-        "text/plain",
-        "application/vnd.ms-excel",
-        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        "video/mp4"
-    );
     
     private static final Set<String> ALLOWED_EXTENSIONS = Set.of(
         "pdf", "doc", "docx", "jpg", "jpeg", "png", "txt", "xls", "xlsx", "mp4"
@@ -45,23 +32,22 @@ public class CloudinaryUploadService {
     public CloudinaryUploadService(
             @Value("${cloudinary.cloud-name}") String cloudName,
             @Value("${cloudinary.api-key}") String apiKey,
-            @Value("${cloudinary.api-secret}") String apiSecret) {
+            @Value("${cloudinary.api-secret}") String apiSecret,
+            VirusScanService virusScanService) {
         this.cloudinary = new Cloudinary(ObjectUtils.asMap(
                 "cloud_name", cloudName,
                 "api_key", apiKey,
                 "api_secret", apiSecret,
                 "secure", true
         ));
+        this.virusScanService = virusScanService;
     }
 
     public Mono<String> upload(FilePart filePart, String folder) {
         String fileName = filePart.filename();
-        String contentType = filePart.headers().getContentType() != null ? 
-                             filePart.headers().getContentType().toString() : "";
         
-        log.info("📁 Recibiendo archivo: {}, tipo: {}", fileName, contentType);
+        log.info("📁 Recibiendo archivo: {}", fileName);
         
-        // VALIDACIÓN 1: Extensión del archivo
         String extension = getFileExtension(fileName);
         if (!ALLOWED_EXTENSIONS.contains(extension.toLowerCase())) {
             return Mono.error(new IllegalArgumentException(
@@ -76,38 +62,48 @@ public class CloudinaryUploadService {
                     dataBuffer.read(bytes);
                     DataBufferUtils.release(dataBuffer);
                     
-                    // VALIDACIÓN 2: Tamaño del archivo
                     long fileSize = bytes.length;
                     if (fileSize > MAX_FILE_SIZE_BYTES) {
                         return Mono.error(new IllegalArgumentException(
-                            "❌ El archivo excede el tamaño máximo de " + MAX_FILE_SIZE_MB + " MB. " +
-                            "Tamaño recibido: " + (fileSize / (1024 * 1024)) + " MB"
+                            "❌ El archivo excede el tamaño máximo de " + MAX_FILE_SIZE_MB + " MB"
                         ));
                     }
                     
-                    log.info("✅ Archivo válido: {} - Tamaño: {} KB", fileName, fileSize / 1024);
-                    
-                    return Mono.fromCallable(() -> {
-                        Path tempFile = Files.createTempFile(UUID.randomUUID().toString(), fileName);
-                        Files.write(tempFile, bytes);
-                        
-                        Map<String, Object> params = ObjectUtils.asMap(
-                                "folder", folder,
-                                "resource_type", "auto",
-                                "use_filename", true,
-                                "unique_filename", true
-                        );
-                        
-                        @SuppressWarnings("unchecked")
-                        Map<String, Object> result = cloudinary.uploader().upload(tempFile.toFile(), params);
-                        Files.delete(tempFile);
-                        
-                        String url = (String) result.get("secure_url");
-                        log.info("✅ Archivo subido a Cloudinary: {}", url);
-                        return url;
-                    });
+                    return virusScanService.scan(bytes, fileName)
+                        .flatMap(isSafe -> {
+                            if (!isSafe) {
+                                return Mono.error(new SecurityException(
+                                    "❌ El archivo fue bloqueado por razones de seguridad"
+                                ));
+                            }
+                            
+                            log.info("✅ Archivo validado y escaneado: {}", fileName);
+                            return uploadToCloudinary(bytes, fileName, folder);
+                        });
                 })
-                .doOnError(error -> log.error("❌ Error subiendo archivo {}: {}", fileName, error.getMessage()));
+                .doOnError(error -> log.error("❌ Error con archivo {}: {}", fileName, error.getMessage()));
+    }
+    
+    private Mono<String> uploadToCloudinary(byte[] bytes, String fileName, String folder) {
+        return Mono.fromCallable(() -> {
+            Path tempFile = Files.createTempFile(UUID.randomUUID().toString(), fileName);
+            Files.write(tempFile, bytes);
+            
+            Map<String, Object> params = ObjectUtils.asMap(
+                    "folder", folder,
+                    "resource_type", "auto",
+                    "use_filename", true,
+                    "unique_filename", true
+            );
+            
+            @SuppressWarnings("unchecked")
+            Map<String, Object> result = cloudinary.uploader().upload(tempFile.toFile(), params);
+            Files.delete(tempFile);
+            
+            String url = (String) result.get("secure_url");
+            log.info("✅ Archivo subido a Cloudinary: {}", url);
+            return url;
+        });
     }
     
     private String getFileExtension(String fileName) {
