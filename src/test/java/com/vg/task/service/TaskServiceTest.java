@@ -3,7 +3,6 @@ package com.vg.task.service;
 import com.vg.task.domain.model.Task;
 import com.vg.task.repository.TaskRepository;
 import com.vg.task.service.impl.TaskServiceImpl;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -16,6 +15,7 @@ import reactor.test.StepVerifier;
 import java.time.OffsetDateTime;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -27,46 +27,70 @@ class TaskServiceTest {
     @InjectMocks
     private TaskServiceImpl taskService;
 
-    private Task task;
-
-    @BeforeEach
-    void setUp() {
-        task = Task.builder()
+    @Test
+    void findAll_ShouldReturnOnlyNonDeletedTasks() {
+        Task activeTask = Task.builder()
                 .id(1L)
-                .title("Test Task")
-                .description("Description")
-                .classId(1)
-                .dueDate(OffsetDateTime.now().plusDays(7))
-                .status("draft")
+                .title("Activa")
                 .isDeleted(false)
-                .createdBy(1)
                 .build();
-    }
-
-    @Test
-    void findAll_ShouldReturnAllNonDeletedTasks() {
-        when(taskRepository.findAll()).thenReturn(Flux.just(task));
         
+        Task deletedTask = Task.builder()
+                .id(2L)
+                .title("Eliminada")
+                .isDeleted(true)
+                .build();
+
+        when(taskRepository.findAll()).thenReturn(Flux.just(activeTask, deletedTask));
+
         StepVerifier.create(taskService.findAll())
-                .expectNextMatches(t -> !t.getIsDeleted())
+                .expectNext(activeTask)
+                .expectNextCount(0)
                 .verifyComplete();
     }
 
     @Test
-    void findById_ShouldReturnTask_WhenExists() {
+    void findById_WhenTaskExists_ShouldReturnTask() {
+        Task task = Task.builder()
+                .id(1L)
+                .title("Tarea test")
+                .isDeleted(false)
+                .build();
+
         when(taskRepository.findById(1L)).thenReturn(Mono.just(task));
-        
+
         StepVerifier.create(taskService.findById(1L))
-                .expectNextMatches(t -> t.getId().equals(1L))
+                .expectNext(task)
                 .verifyComplete();
     }
 
     @Test
-    void save_ShouldSaveTask_WhenValid() {
-        when(taskRepository.save(any(Task.class))).thenReturn(Mono.just(task));
-        
-        StepVerifier.create(taskService.save(task))
-                .expectNextMatches(t -> t.getTitle().equals("Test Task"))
+    void findById_WhenTaskDeleted_ShouldReturnError() {
+        Task deletedTask = Task.builder()
+                .id(1L)
+                .title("Eliminada")
+                .isDeleted(true)
+                .build();
+
+        when(taskRepository.findById(1L)).thenReturn(Mono.just(deletedTask));
+
+        StepVerifier.create(taskService.findById(1L))
+                .expectError()
+                .verify();
+    }
+
+    @Test
+    void findAllPaged_ShouldReturnCorrectPage() {
+        Task task1 = Task.builder().id(1L).title("Tarea 1").isDeleted(false).build();
+        Task task2 = Task.builder().id(2L).title("Tarea 2").isDeleted(false).build();
+
+        when(taskRepository.countActiveTasks()).thenReturn(Mono.just(2L));
+        when(taskRepository.findAllPaged(0, 10)).thenReturn(Flux.just(task1, task2));
+
+        StepVerifier.create(taskService.findAllPaged(0, 10))
+                .expectNextMatches(page -> 
+                    page.totalElements() == 2 && 
+                    page.content().size() == 2)
                 .verifyComplete();
     }
 }

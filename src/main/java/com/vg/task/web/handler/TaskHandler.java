@@ -7,7 +7,8 @@ import com.vg.task.domain.dto.TaskResponseDTO;
 import com.vg.task.domain.dto.UpdateTaskRequestDTO;
 import com.vg.task.domain.dto.PageResponseDTO;
 import com.vg.task.mapper.TaskMapper;
-import com.vg.task.service.RateLimitService;
+import com.vg.task.repository.TaskRepository;
+import com.vg.task.validation.TaskValidator;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -26,6 +27,8 @@ public class TaskHandler {
 
     private final TaskUseCase taskUseCase;
     private final TaskMapper mapper;
+    private final TaskRepository taskRepository;
+    private final TaskValidator validator;
 
     public Mono<ServerResponse> findAll(ServerRequest request) {
         return ServerResponse.ok()
@@ -108,6 +111,7 @@ public class TaskHandler {
 
     public Mono<ServerResponse> save(ServerRequest request) {
         return request.bodyToMono(TaskRequestDTO.class)
+                .doOnNext(validator::validateTaskRequest)
                 .map(mapper::toDomain)
                 .flatMap(taskUseCase::save)
                 .map(mapper::toResponse)
@@ -182,5 +186,16 @@ public class TaskHandler {
         return ServerResponse.ok()
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(taskUseCase.findUpcomingTasks(days).map(mapper::toResponse), TaskResponseDTO.class);
+    }
+
+    public Mono<ServerResponse> getStudentTasks(ServerRequest request) {
+        Integer classId = Integer.parseInt(request.pathVariable("classId"));
+        OffsetDateTime now = OffsetDateTime.now();
+        
+        return taskRepository.findByClassIdAndStatusAndIsDeletedFalse(classId, "published")
+                .filter(t -> t.getDueDate() == null || t.getDueDate().isAfter(now))
+                .map(mapper::toResponse)
+                .collectList()
+                .flatMap(tasks -> ServerResponse.ok().bodyValue(tasks));
     }
 }

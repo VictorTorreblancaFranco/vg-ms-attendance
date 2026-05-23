@@ -31,6 +31,7 @@ public class TaskRouter {
                 .andRoute(GET(API_V1 + "/class/{classId}"), handler::findByClassId)
                 .andRoute(GET(API_V1 + "/overdue"), handler::findOverdue)
                 .andRoute(GET(API_V1 + "/upcoming"), handler::findUpcoming)
+                .andRoute(GET(API_V1 + "/student/class/{classId}"), handler::getStudentTasks)
                 .andRoute(GET(API_V1 + "/{id}"), handler::findById)
                 .andRoute(POST(API_V1 + "/save"), handler::save)
                 .andRoute(PUT(API_V1 + "/update"), handler::update)

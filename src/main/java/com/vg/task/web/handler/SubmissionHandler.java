@@ -1,9 +1,12 @@
 package com.vg.task.web.handler;
 
 import com.vg.task.application.port.input.SubmissionUseCase;
-import com.vg.task.domain.dto.*;
+import com.vg.task.domain.dto.GradeRequestDTO;
+import com.vg.task.domain.dto.SubmissionRequestDTO;
+import com.vg.task.domain.dto.SubmissionResponseDTO;
 import com.vg.task.mapper.SubmissionMapper;
 import com.vg.task.service.impl.SubmissionServiceImpl;
+import com.vg.task.validation.TaskValidator;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -22,6 +25,7 @@ public class SubmissionHandler {
     private final SubmissionUseCase submissionUseCase;
     private final SubmissionMapper mapper;
     private final SubmissionServiceImpl submissionServiceImpl;
+    private final TaskValidator validator;
 
     public Mono<ServerResponse> findAll(ServerRequest request) {
         return ServerResponse.ok()
@@ -64,6 +68,7 @@ public class SubmissionHandler {
     public Mono<ServerResponse> grade(ServerRequest request) {
         Long id = Long.parseLong(request.pathVariable("id"));
         return request.bodyToMono(GradeRequestDTO.class)
+                .doOnNext(validator::validateGradeRequest)
                 .flatMap(dto -> submissionUseCase.grade(id, dto))
                 .map(mapper::toResponse)
                 .flatMap(response -> ServerResponse.ok().bodyValue(response));

@@ -1,9 +1,12 @@
 package com.vg.task.repository;
 
 import com.vg.task.domain.model.Task;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.r2dbc.repository.Query;
 import org.springframework.data.repository.reactive.ReactiveCrudRepository;
 import org.springframework.stereotype.Repository;
 import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 import java.time.OffsetDateTime;
 
 @Repository
@@ -18,4 +21,11 @@ public interface TaskRepository extends ReactiveCrudRepository<Task, Long> {
     Flux<Task> findByScheduledCloseDateBeforeAndStatusAndIsDeletedFalse(OffsetDateTime date, String status);
     Flux<Task> findByDueDateBeforeAndStatusAndIsDeletedFalse(OffsetDateTime date, String status);
     Flux<Task> findByDueDateBetweenAndStatusAndIsDeletedFalse(OffsetDateTime from, OffsetDateTime to, String status);
+    Flux<Task> findByClassIdAndStatusAndIsDeletedFalse(Integer classId, String status);
+
+    @Query("SELECT * FROM tasks WHERE is_deleted = false LIMIT :limit OFFSET :offset")
+    Flux<Task> findAllPaged(int offset, int limit);
+
+    @Query("SELECT COUNT(*) FROM tasks WHERE is_deleted = false")
+    Mono<Long> countActiveTasks();
 }

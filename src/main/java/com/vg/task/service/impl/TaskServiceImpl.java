@@ -16,7 +16,6 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.time.OffsetDateTime;
-import java.util.ArrayList;
 import java.util.List;
 
 @Slf4j
@@ -36,19 +35,15 @@ public class TaskServiceImpl implements TaskUseCase {
     
     @Override
     public Mono<PageResponseDTO<Task>> findAllPaged(int page, int size) {
-        return taskRepository.findAll()
-                .filter(task -> !Boolean.TRUE.equals(task.getIsDeleted()))
-                .collectList()
-                .flatMap(allTasks -> {
-                    int total = allTasks.size();
-                    int start = Math.min(page * size, total);
-                    int end = Math.min(start + size, total);
-                    List<Task> pagedTasks = new ArrayList<>();
-                    if (start < end) {
-                        pagedTasks = allTasks.subList(start, end);
-                    }
-                    return Mono.just(PageResponseDTO.of(pagedTasks, page, size, total));
-                });
+        int offset = page * size;
+        return Mono.zip(
+            taskRepository.countActiveTasks(),
+            taskRepository.findAllPaged(offset, size).collectList()
+        ).map(tuple -> {
+            long total = tuple.getT1();
+            List<Task> tasks = tuple.getT2();
+            return PageResponseDTO.of(tasks, page, size, total);
+        });
     }
     
     @Override

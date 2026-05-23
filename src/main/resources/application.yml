@@ -1,0 +1,114 @@
+server:
+  port: ${PORT:8085}
+
+spring:
+  application:
+    name: vg-ms-task
+
+  r2dbc:
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+    pool:
+      initial-size: 2
+      max-size: 10
+      max-idle-time: 30m
+      max-life-time: 60m
+      validation-query: SELECT 1
+
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    locations: classpath:db/migration
+
+  cache:
+    type: caffeine
+    caffeine:
+      spec: expireAfterWrite=1h,maximumSize=100
+
+  main:
+    allow-bean-definition-overriding: true
+
+services:
+  academic-url: ${ACADEMIC_SERVICE_URL:http://localhost:8082}
+  student-url: ${STUDENT_SERVICE_URL:http://localhost:8083}
+
+logging:
+  level:
+    root: INFO
+    com.vg.task: DEBUG
+    org.springframework.r2dbc: INFO
+  pattern:
+    console: '{"timestamp":"%d{yyyy-MM-dd HH:mm:ss.SSS}","level":"%p","logger":"%c","message":"%m","trace":"%ex"}'
+  file:
+    name: logs/task-service.log
+    max-size: 10MB
+    max-history: 30
+
+cloudinary:
+  cloud-name: ${CLOUDINARY_CLOUD_NAME}
+  api-key: ${CLOUDINARY_API_KEY}
+  api-secret: ${CLOUDINARY_API_SECRET}
+
+resilience4j:
+  retry:
+    instances:
+      academicService:
+        max-attempts: 5
+        wait-duration: 1s
+        retry-exceptions:
+          - java.io.IOException
+          - org.springframework.web.reactive.function.client.WebClientResponseException
+        exponential-backoff-multiplier: 2
+  circuitbreaker:
+    instances:
+      academicService:
+        sliding-window-size: 10
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 30s
+        permitted-number-of-calls-in-half-open-state: 3
+        slow-call-duration-threshold: 5s
+        slow-call-rate-threshold: 50
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: always
+      show-components: ALWAYS
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
+  info:
+    env:
+      enabled: true
+
+springdoc:
+  api-docs:
+    path: /api-docs
+    enabled: true
+  swagger-ui:
+    path: /swagger-ui.html
+    enabled: true
+    operationsSorter: method
+    tagsSorter: alpha
+    tryItOutEnabled: true
+    filter: true
+    displayRequestDuration: true
+    doc-expansion: none
+  show-actuator: true
+  writer-with-default-pretty-printer: true
+  webflux:
+    functional-endpoints:
+      enabled: true
+      paths: /api/**
+
+submission:
+  grace-period-days: 30
