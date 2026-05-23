@@ -41,3 +41,7 @@ build/
 test.txt
 prueba.txt
 *.bak
+
+# Docker
+*.pid
+docker-compose.override.yml
