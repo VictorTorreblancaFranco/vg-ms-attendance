@@ -84,10 +84,14 @@ public class SubmissionHandler {
                     .map(results -> Map.of(
                         "message", "Calificaciones procesadas exitosamente",
                         "count", results.size(),
-                        "gradedBy", gradedBy
+                        "gradedBy", gradedBy,
+                        "transactional", true
                     ))
                     .flatMap(response -> ServerResponse.ok().bodyValue(response))
-                    .onErrorResume(e -> ServerResponse.badRequest().bodyValue(Map.of("error", e.getMessage())));
+                    .onErrorResume(e -> ServerResponse.badRequest().bodyValue(Map.of(
+                        "error", e.getMessage(),
+                        "transactional", true
+                    )));
             });
     }
 

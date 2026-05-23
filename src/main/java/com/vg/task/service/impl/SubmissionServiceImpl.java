@@ -22,7 +22,9 @@ import reactor.core.publisher.Mono;
 
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 @Slf4j
 @Service
@@ -89,18 +91,35 @@ public class SubmissionServiceImpl implements SubmissionUseCase {
     @Override
     public Mono<Submission> submit(Submission submission) {
         return studentService.validateStudent(submission.getStudentId())
-                .flatMap(valid -> {
-                    if (!valid) {
-                        return Mono.error(new NotFoundException("Student not found: " + submission.getStudentId()));
-                    }
-                    submission.setSubmissionDate(OffsetDateTime.now());
-                    submission.setStatus("submitted");
-                    submission.setPresented(false);
-                    submission.setIsLate(false);
-                    submission.setCreatedAt(OffsetDateTime.now());
-                    submission.setUpdatedAt(OffsetDateTime.now());
-                    return submissionRepository.save(submission);
-                });
+            .flatMap(valid -> {
+                if (!valid) {
+                    return Mono.error(new NotFoundException("Student not found: " + submission.getStudentId()));
+                }
+                
+                // UPSERT: Si existe, actualiza; si no, crea
+                return submissionRepository.findByTaskIdAndStudentId(
+                        submission.getTaskId(), submission.getStudentId())
+                    .flatMap(existing -> {
+                        log.info("📝 Actualizando entrega existente para tarea {} estudiante {}", 
+                                submission.getTaskId(), submission.getStudentId());
+                        existing.setJustificationReason(submission.getJustificationReason());
+                        existing.setUpdatedAt(OffsetDateTime.now());
+                        return submissionRepository.save(existing);
+                    })
+                    .switchIfEmpty(
+                        Mono.defer(() -> {
+                            log.info("📝 Creando nueva entrega para tarea {} estudiante {}", 
+                                    submission.getTaskId(), submission.getStudentId());
+                            submission.setSubmissionDate(OffsetDateTime.now());
+                            submission.setStatus("submitted");
+                            submission.setPresented(false);
+                            submission.setIsLate(false);
+                            submission.setCreatedAt(OffsetDateTime.now());
+                            submission.setUpdatedAt(OffsetDateTime.now());
+                            return submissionRepository.save(submission);
+                        })
+                    );
+            });
     }
     
     @Override
@@ -142,49 +161,73 @@ public class SubmissionServiceImpl implements SubmissionUseCase {
     
     @Transactional
     public Mono<List<Submission>> bulkGrade(MultipartFile file, Integer gradedBy, Long taskId) {
+        log.info("📊 Iniciando carga masiva con transacción - gradedBy: {}, taskId: {}", gradedBy, taskId);
+        
         return excelProcessingService.processExcel(file)
             .flatMap(result -> {
                 List<ExcelGradeRowDTO> validRows = result.validRows();
+                List<ExcelProcessingService.ExcelError> errors = result.errors();
+                
                 if (validRows.isEmpty()) {
-                    return Mono.error(new BadRequestException("No hay filas válidas en el Excel. Errores: " + result.errors().size()));
+                    return Mono.error(new BadRequestException(
+                        "No hay filas válidas en el Excel. " + errors.size() + " errores encontrados."
+                    ));
                 }
+                
+                // Validar duplicados en el Excel (misma fila repetida)
+                Set<String> seen = new HashSet<>();
+                List<String> duplicates = new ArrayList<>();
+                for (ExcelGradeRowDTO row : validRows) {
+                    String key = row.getTaskId() + "|" + row.getStudentId();
+                    if (seen.contains(key)) {
+                        duplicates.add("Tarea " + row.getTaskId() + " - Estudiante " + row.getStudentId());
+                    }
+                    seen.add(key);
+                }
+                
+                if (!duplicates.isEmpty()) {
+                    return Mono.error(new BadRequestException("Duplicados encontrados en el Excel: " + String.join(", ", duplicates)));
+                }
+                
+                // Procesar todas las filas (si algo falla, todo se revierte por @Transactional)
                 return Flux.fromIterable(validRows)
-                    .flatMap(row -> processGradeRow(row, gradedBy, taskId))
-                    .collectList();
-            })
-            .doOnSuccess(list -> log.info("✅ Procesadas {} calificaciones masivas", list.size()));
+                    .concatMap(row -> processGradeRow(row, gradedBy, taskId))
+                    .collectList()
+                    .doOnSuccess(list -> log.info("✅ Transacción completada: {} registros guardados", list.size()))
+                    .doOnError(error -> log.error("❌ Transacción revertida - Error: {}", error.getMessage()));
+            });
     }
     
     private Mono<Submission> processGradeRow(ExcelGradeRowDTO row, Integer gradedBy, Long taskId) {
         Long finalTaskId = row.getTaskId() != null ? row.getTaskId() : taskId;
         if (finalTaskId == null) {
-            return Mono.error(new BadRequestException("Task ID es requerido en cada fila o en el request"));
+            return Mono.error(new BadRequestException("Task ID es requerido para estudiante " + row.getStudentId()));
         }
         
         return submissionRepository.findByTaskIdAndStudentId(finalTaskId, row.getStudentId())
             .switchIfEmpty(createNewSubmission(finalTaskId, row.getStudentId()))
             .flatMap(submission -> {
                 Double oldGrade = submission.getGrade();
+                OffsetDateTime now = OffsetDateTime.now();
                 
                 submission.setGrade(row.getGrade());
                 submission.setGradedBy(gradedBy);
-                submission.setGradedAt(OffsetDateTime.now());
+                submission.setGradedAt(now);
                 submission.setStatus("graded");
                 submission.setPresented(row.getGrade() != null && row.getGrade() > 0);
-                submission.setIsLate(row.getIsLate());
+                submission.setIsLate(row.getIsLate() != null && row.getIsLate());
                 submission.setObservations(row.getObservations());
+                submission.setUpdatedAt(now);
+                
+                if (submission.getPresented() != null && submission.getPresented()) {
+                    submission.setPresentedAt(now);
+                }
                 
                 if (row.getIsLate() != null && row.getIsLate() && row.getJustification() != null) {
                     submission.setJustificationReason(row.getJustification());
-                    submission.setJustifiedAt(OffsetDateTime.now());
+                    submission.setJustifiedAt(now);
                     submission.setJustifiedBy(gradedBy);
                 }
-                
-                if (submission.getPresented() != null && submission.getPresented()) {
-                    submission.setPresentedAt(OffsetDateTime.now());
-                }
-                
-                submission.setUpdatedAt(OffsetDateTime.now());
                 
                 if (oldGrade != null && !oldGrade.equals(row.getGrade())) {
                     return gradeLogRepository.saveLog(submission.getId(), oldGrade, row.getGrade(), gradedBy, row.getJustification())
