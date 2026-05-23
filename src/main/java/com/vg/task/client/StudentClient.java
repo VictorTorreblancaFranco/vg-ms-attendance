@@ -40,4 +40,12 @@ public class StudentClient implements StudentServicePort {
                     return Mono.empty();
                 });
     }
+    
+    public Mono<Long> getAllStudentsCount() {
+        return studentWebClient.get()
+                .uri("/api/students/count")
+                .retrieve()
+                .bodyToMono(Long.class)
+                .onErrorReturn(0L);
+    }
 }

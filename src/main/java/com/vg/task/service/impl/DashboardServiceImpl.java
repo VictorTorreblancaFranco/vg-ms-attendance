@@ -1,5 +1,6 @@
 package com.vg.task.service.impl;
 
+import com.vg.task.client.StudentClient;
 import com.vg.task.domain.dto.DashboardStatsDTO;
 import com.vg.task.domain.dto.DailySubmissionDTO;
 import com.vg.task.domain.dto.GradeDistributionDTO;
@@ -7,29 +8,33 @@ import com.vg.task.repository.SubmissionRepository;
 import com.vg.task.repository.TaskRepository;
 import com.vg.task.service.DashboardService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 
-import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class DashboardServiceImpl implements DashboardService {
 
     private final TaskRepository taskRepository;
     private final SubmissionRepository submissionRepository;
+    private final StudentClient studentClient;
 
     @Override
     public Mono<DashboardStatsDTO> getDashboardStats() {
         OffsetDateTime thirtyDaysAgo = OffsetDateTime.now().minusDays(30);
         
         return Mono.zip(
-            taskRepository.count(),
-            submissionRepository.count(),
+            getTotalTasks(),
+            getTotalSubmissions(),
             getTotalStudentsSubmitted(),
             getAverageGrade(),
             getTasksByStatus(),
@@ -37,8 +42,14 @@ public class DashboardServiceImpl implements DashboardService {
             getDailySubmissions(thirtyDaysAgo),
             getGradeDistribution()
         ).map(tuple -> new DashboardStatsDTO(
-            tuple.getT1(), tuple.getT2(), tuple.getT3(), tuple.getT4(),
-            tuple.getT5(), tuple.getT6(), tuple.getT7(), tuple.getT8()
+            tuple.getT1(),    // totalTasks
+            tuple.getT2(),    // totalSubmissions
+            tuple.getT3(),    // totalStudentsSubmitted
+            tuple.getT4(),    // averageGrade
+            tuple.getT5(),    // tasksByStatus
+            tuple.getT6(),    // submissionsByStatus
+            tuple.getT7(),    // dailySubmissions
+            tuple.getT8()     // gradeDistribution
         ));
     }
 
@@ -59,9 +70,27 @@ public class DashboardServiceImpl implements DashboardService {
                 byStatus.put("graded", submissions.stream().filter(s -> "graded".equals(s.getStatus())).count());
                 byStatus.put("late", submissions.stream().filter(s -> "late".equals(s.getStatus())).count());
                 
-                return new DashboardStatsDTO(1L, (long) submissions.size(), count, avg,
-                        null, byStatus, null, getDistributionFromSubmissions(submissions));
+                GradeDistributionDTO gradeDist = getDistributionFromSubmissions(submissions);
+                
+                return new DashboardStatsDTO(
+                    1L,                           // totalTasks
+                    (long) submissions.size(),    // totalSubmissions
+                    (long) submissions.stream().map(s -> s.getStudentId()).distinct().count(), // totalStudentsSubmitted
+                    avg,                          // averageGrade
+                    null,                         // tasksByStatus
+                    byStatus,                     // submissionsByStatus
+                    null,                         // dailySubmissions
+                    gradeDist                     // gradeDistribution
+                );
             });
+    }
+
+    private Mono<Long> getTotalTasks() {
+        return taskRepository.count();
+    }
+
+    private Mono<Long> getTotalSubmissions() {
+        return submissionRepository.count();
     }
 
     private Mono<Long> getTotalStudentsSubmitted() {
@@ -81,41 +110,32 @@ public class DashboardServiceImpl implements DashboardService {
 
     private Mono<Map<String, Long>> getTasksByStatus() {
         return taskRepository.findAll()
-                .map(t -> t.getStatus())
+                .filter(t -> !Boolean.TRUE.equals(t.getIsDeleted()))
                 .collectList()
-                .map(statuses -> {
+                .map(tasks -> {
                     Map<String, Long> map = new HashMap<>();
-                    map.put("draft", statuses.stream().filter(s -> "draft".equals(s)).count());
-                    map.put("published", statuses.stream().filter(s -> "published".equals(s)).count());
-                    map.put("closed", statuses.stream().filter(s -> "closed".equals(s)).count());
-                    map.put("archived", statuses.stream().filter(s -> "archived".equals(s)).count());
+                    map.put("draft", tasks.stream().filter(t -> "draft".equals(t.getStatus())).count());
+                    map.put("published", tasks.stream().filter(t -> "published".equals(t.getStatus())).count());
+                    map.put("closed", tasks.stream().filter(t -> "closed".equals(t.getStatus())).count());
+                    map.put("archived", tasks.stream().filter(t -> "archived".equals(t.getStatus())).count());
                     return map;
                 });
     }
 
     private Mono<Map<String, Long>> getSubmissionsByStatus() {
         return submissionRepository.findAll()
-                .map(s -> s.getStatus())
                 .collectList()
-                .map(statuses -> {
+                .map(submissions -> {
                     Map<String, Long> map = new HashMap<>();
-                    map.put("submitted", statuses.stream().filter(s -> "submitted".equals(s)).count());
-                    map.put("graded", statuses.stream().filter(s -> "graded".equals(s)).count());
-                    map.put("late", statuses.stream().filter(s -> "late".equals(s)).count());
-                    map.put("excused", statuses.stream().filter(s -> "excused".equals(s)).count());
+                    map.put("submitted", submissions.stream().filter(s -> "submitted".equals(s.getStatus())).count());
+                    map.put("graded", submissions.stream().filter(s -> "graded".equals(s.getStatus())).count());
+                    map.put("late", submissions.stream().filter(s -> "late".equals(s.getStatus())).count());
+                    map.put("excused", submissions.stream().filter(s -> "excused".equals(s.getStatus())).count());
                     return map;
                 });
     }
 
-    private Mono<GradeDistributionDTO> getGradeDistribution() {
-        return submissionRepository.findAll()
-                .filter(s -> s.getGrade() != null)
-                .map(s -> s.getGrade())
-                .collectList()
-                .map(this::getDistributionFromGrades);
-    }
-
-    private Mono<java.util.List<DailySubmissionDTO>> getDailySubmissions(OffsetDateTime fromDate) {
+    private Mono<List<DailySubmissionDTO>> getDailySubmissions(OffsetDateTime fromDate) {
         return submissionRepository.findAll()
                 .filter(s -> s.getSubmissionDate().isAfter(fromDate))
                 .collectList()
@@ -128,11 +148,19 @@ public class DashboardServiceImpl implements DashboardService {
                     }
                     return daily.entrySet().stream()
                             .map(e -> new DailySubmissionDTO(e.getKey(), e.getValue()))
-                            .toList();
+                            .collect(Collectors.toList());
                 });
     }
 
-    private GradeDistributionDTO getDistributionFromGrades(java.util.List<Double> grades) {
+    private Mono<GradeDistributionDTO> getGradeDistribution() {
+        return submissionRepository.findAll()
+                .filter(s -> s.getGrade() != null)
+                .map(s -> s.getGrade())
+                .collectList()
+                .map(this::getDistributionFromGrades);
+    }
+
+    private GradeDistributionDTO getDistributionFromGrades(List<Double> grades) {
         long c0_5 = grades.stream().filter(g -> g >= 0 && g <= 5).count();
         long c6_10 = grades.stream().filter(g -> g >= 6 && g <= 10).count();
         long c11_15 = grades.stream().filter(g -> g >= 11 && g <= 15).count();
@@ -140,7 +168,7 @@ public class DashboardServiceImpl implements DashboardService {
         return new GradeDistributionDTO(c0_5, c6_10, c11_15, c16_20);
     }
 
-    private GradeDistributionDTO getDistributionFromSubmissions(java.util.List<com.vg.task.domain.model.Submission> submissions) {
+    private GradeDistributionDTO getDistributionFromSubmissions(List<com.vg.task.domain.model.Submission> submissions) {
         long c0_5 = submissions.stream().filter(s -> s.getGrade() != null && s.getGrade() >= 0 && s.getGrade() <= 5).count();
         long c6_10 = submissions.stream().filter(s -> s.getGrade() != null && s.getGrade() >= 6 && s.getGrade() <= 10).count();
         long c11_15 = submissions.stream().filter(s -> s.getGrade() != null && s.getGrade() >= 11 && s.getGrade() <= 15).count();

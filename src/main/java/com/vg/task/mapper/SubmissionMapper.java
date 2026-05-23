@@ -2,14 +2,11 @@ package com.vg.task.mapper;
 
 import com.vg.task.domain.dto.SubmissionRequestDTO;
 import com.vg.task.domain.dto.SubmissionResponseDTO;
-import com.vg.task.domain.dto.SubmissionFileDTO;
-import com.vg.task.domain.dto.RubricScoreDTO;
 import com.vg.task.domain.model.Submission;
 import org.springframework.stereotype.Component;
 
 import java.time.OffsetDateTime;
 import java.util.Collections;
-import java.util.List;
 
 @Component
 public class SubmissionMapper {
@@ -25,11 +22,8 @@ public class SubmissionMapper {
                 .submissionDate(now)
                 .status("submitted")
                 .justificationReason(dto.justificationReason())
-                .privateComment(dto.privateComment())
-                .publicComment(dto.publicComment())
-                .reattemptCount(1)
-                .reattemptAllowed(false)
-                .maxReattempts(0)
+                .presented(false)
+                .isLate(false)
                 .createdAt(now)
                 .updatedAt(now)
                 .build();
@@ -49,11 +43,12 @@ public class SubmissionMapper {
                 .gradedBy(entity.getGradedBy())
                 .gradedAt(entity.getGradedAt())
                 .justificationReason(entity.getJustificationReason())
-                .privateComment(entity.getPrivateComment())
-                .publicComment(entity.getPublicComment())
-                .reattemptCount(entity.getReattemptCount())
-                .reattemptAllowed(entity.getReattemptAllowed())
-                .maxReattempts(entity.getMaxReattempts())
+                .presented(entity.getPresented())
+                .presentedAt(entity.getPresentedAt())
+                .observations(entity.getObservations())
+                .isLate(entity.getIsLate())
+                .justifiedAt(entity.getJustifiedAt())
+                .justifiedBy(entity.getJustifiedBy())
                 .createdAt(entity.getCreatedAt())
                 .updatedAt(entity.getUpdatedAt())
                 .build();
@@ -73,11 +68,12 @@ public class SubmissionMapper {
         entity.setGradedBy(domain.getGradedBy());
         entity.setGradedAt(domain.getGradedAt());
         entity.setJustificationReason(domain.getJustificationReason());
-        entity.setPrivateComment(domain.getPrivateComment());
-        entity.setPublicComment(domain.getPublicComment());
-        entity.setReattemptCount(domain.getReattemptCount());
-        entity.setReattemptAllowed(domain.getReattemptAllowed());
-        entity.setMaxReattempts(domain.getMaxReattempts());
+        entity.setPresented(domain.getPresented());
+        entity.setPresentedAt(domain.getPresentedAt());
+        entity.setObservations(domain.getObservations());
+        entity.setIsLate(domain.getIsLate());
+        entity.setJustifiedAt(domain.getJustifiedAt());
+        entity.setJustifiedBy(domain.getJustifiedBy());
         entity.setCreatedAt(domain.getCreatedAt());
         entity.setUpdatedAt(domain.getUpdatedAt());
         return entity;
@@ -97,16 +93,14 @@ public class SubmissionMapper {
                 submission.getGradedBy(),
                 submission.getGradedAt(),
                 submission.getJustificationReason(),
-                submission.getPrivateComment(),
-                submission.getPublicComment(),
-                submission.getReattemptCount(),
-                submission.getReattemptAllowed(),
-                submission.getMaxReattempts(),
+                submission.getPresented(),
+                submission.getPresentedAt(),
+                submission.getObservations(),
+                submission.getIsLate(),
+                submission.getJustifiedAt(),
+                submission.getJustifiedBy(),
                 submission.getCreatedAt(),
-                submission.getUpdatedAt(),
-                Collections.emptyList(),
-                Collections.emptyList(),
-                Collections.emptyList()
+                submission.getUpdatedAt()
         );
     }
 }

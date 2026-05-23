@@ -1,7 +1,6 @@
 package com.vg.task.domain.dto;
 
 import java.time.OffsetDateTime;
-import java.util.List;
 
 public record SubmissionResponseDTO(
     Long id,
@@ -14,14 +13,12 @@ public record SubmissionResponseDTO(
     Integer gradedBy,
     OffsetDateTime gradedAt,
     String justificationReason,
-    String privateComment,
-    String publicComment,
-    Integer reattemptCount,
-    Boolean reattemptAllowed,
-    Integer maxReattempts,
+    Boolean presented,
+    OffsetDateTime presentedAt,
+    String observations,
+    Boolean isLate,
+    OffsetDateTime justifiedAt,
+    Integer justifiedBy,
     OffsetDateTime createdAt,
-    OffsetDateTime updatedAt,
-    List<SubmissionFileDTO> files,
-    List<CommentFileDTO> commentFiles,
-    List<RubricScoreDTO> rubricScores
+    OffsetDateTime updatedAt
 ) {}

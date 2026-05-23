@@ -36,14 +36,13 @@ public class TaskServiceImpl implements TaskUseCase {
     
     @Override
     public Mono<PageResponseDTO<Task>> findAllPaged(int page, int size) {
-        int offset = page * size;
         return taskRepository.findAll()
                 .filter(task -> !Boolean.TRUE.equals(task.getIsDeleted()))
                 .collectList()
                 .flatMap(allTasks -> {
                     int total = allTasks.size();
-                    int start = Math.min(offset, total);
-                    int end = Math.min(offset + size, total);
+                    int start = Math.min(page * size, total);
+                    int end = Math.min(start + size, total);
                     List<Task> pagedTasks = new ArrayList<>();
                     if (start < end) {
                         pagedTasks = allTasks.subList(start, end);
@@ -90,9 +89,7 @@ public class TaskServiceImpl implements TaskUseCase {
     public Mono<Task> save(Task task) {
         log.info("📝 Creando tarea: {}", task.getTitle());
         
-        if (task.getInstructions() == null || task.getInstructions().isBlank()) {
-            return Mono.error(new BadRequestException("Debe proporcionar un link o instrucción"));
-        }
+        // Solo validar fecha de entrega (ya no se exigen archivos)
         if (task.getDueDate() == null) {
             return Mono.error(new BadRequestException("La fecha de entrega es requerida"));
         }

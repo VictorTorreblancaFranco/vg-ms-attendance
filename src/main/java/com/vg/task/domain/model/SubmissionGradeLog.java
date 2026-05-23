@@ -13,22 +13,25 @@ import java.time.OffsetDateTime;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Table("submission_files")
-public class SubmissionFile {
+@Table("submission_grade_logs")
+public class SubmissionGradeLog {
     @Id
     private Long id;
+    
     @Column("submission_id")
     private Long submissionId;
-    @Column("file_name")
-    private String fileName;
-    @Column("file_url")
-    private String fileUrl;
-    @Column("file_type")
-    private String fileType;
-    @Column("file_size_kb")
-    private Integer fileSizeKb;
-    @Column("created_at")
-    private OffsetDateTime createdAt;
-    @Column("active")
-    private Boolean active;
+    
+    @Column("old_grade")
+    private Double oldGrade;
+    
+    @Column("new_grade")
+    private Double newGrade;
+    
+    @Column("changed_by")
+    private Integer changedBy;
+    
+    private String justification;
+    
+    @Column("changed_at")
+    private OffsetDateTime changedAt;
 }

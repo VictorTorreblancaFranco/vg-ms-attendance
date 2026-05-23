@@ -7,7 +7,6 @@ import lombok.NoArgsConstructor;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.relational.core.mapping.Column;
 import org.springframework.data.relational.core.mapping.Table;
-
 import java.time.OffsetDateTime;
 
 @Data
@@ -42,24 +41,26 @@ public class Submission {
     @Column("justification_reason")
     private String justificationReason;
 
-    @Column("private_comment")
-    private String privateComment;
-
-    @Column("public_comment")
-    private String publicComment;
-
-    @Column("reattempt_count")
-    private Integer reattemptCount;
-
-    @Column("reattempt_allowed")
-    private Boolean reattemptAllowed;
-
-    @Column("max_reattempts")
-    private Integer maxReattempts;
-
     @Column("created_at")
     private OffsetDateTime createdAt;
 
     @Column("updated_at")
     private OffsetDateTime updatedAt;
+
+    // Nuevos campos para entregas físicas
+    private Boolean presented;
+    
+    @Column("presented_at")
+    private OffsetDateTime presentedAt;
+    
+    private String observations;
+    
+    @Column("is_late")
+    private Boolean isLate;
+    
+    @Column("justified_at")
+    private OffsetDateTime justifiedAt;
+    
+    @Column("justified_by")
+    private Integer justifiedBy;
 }

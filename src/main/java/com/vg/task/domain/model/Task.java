@@ -7,7 +7,6 @@ import lombok.NoArgsConstructor;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.relational.core.mapping.Column;
 import org.springframework.data.relational.core.mapping.Table;
-
 import java.time.OffsetDateTime;
 
 @Data
@@ -21,7 +20,7 @@ public class Task {
     private Long id;
     private String title;
     private String description;
-    private String instructions;
+    private String instructions; // Aquí va el resumen de clase/instrucciones
     
     @Column("class_id")
     private Integer classId;

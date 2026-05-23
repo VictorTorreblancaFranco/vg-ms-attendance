@@ -1,9 +1,7 @@
 package com.vg.task.domain.dto;
 
-import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import java.time.OffsetDateTime;
-import java.util.List;
 
 public record UpdateTaskRequestDTO(
     @NotNull(message = "Task ID is required")
@@ -17,8 +15,7 @@ public record UpdateTaskRequestDTO(
     Double pointsValue,
     OffsetDateTime dueDate,
     OffsetDateTime scheduledPublishDate,
-    OffsetDateTime scheduledCloseDate,
+    OffsetDateTime scheduledCloseDate
     
-    @Valid
-    List<TaskFileDTO> files
+    // ❌ Eliminado: List<TaskFileDTO> files
 ) {}

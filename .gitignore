@@ -45,3 +45,9 @@ prueba.txt
 # Docker
 *.pid
 docker-compose.override.yml
+
+# Excel temporary files
+*.xlsx
+*.xls
+~.xlsx
+~.xls

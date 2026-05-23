@@ -7,7 +7,6 @@ import org.springframework.stereotype.Component;
 
 import java.time.OffsetDateTime;
 import java.util.Collections;
-import java.util.List;
 
 @Component
 public class TaskMapper {
@@ -54,8 +53,7 @@ public class TaskMapper {
                 task.getCreatedBy(),
                 task.getCreatedAt(),
                 task.getUpdatedAt(),
-                task.getDeletedAt(),
-                Collections.emptyList()
+                task.getDeletedAt()
         );
     }
 }

@@ -34,12 +34,7 @@ public class ValidationUtils {
             throw new BadRequestException("Points value cannot be negative");
         }
         
-        if (request.files() == null || request.files().isEmpty()) {
-            throw new BadRequestException("At least one file or link is required");
-        }
-        
-        if (request.files().size() > 5) {
-            throw new BadRequestException("Maximum 5 files allowed");
-        }
+        // ❌ ELIMINADA validación de archivos obligatorios
+        // Los profesores pueden crear tareas sin adjuntar archivos
     }
 }

@@ -7,10 +7,16 @@ import com.vg.task.domain.model.Submission;
 import com.vg.task.domain.dto.GradeRequestDTO;
 import com.vg.task.domain.dto.RubricGradeRequestDTO;
 import com.vg.task.domain.dto.PageResponseDTO;
+import com.vg.task.domain.dto.excel.ExcelGradeRowDTO;
+import com.vg.task.exception.BadRequestException;
 import com.vg.task.exception.NotFoundException;
+import com.vg.task.repository.SubmissionGradeLogRepository;
+import com.vg.task.service.ExcelProcessingService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
@@ -25,6 +31,8 @@ public class SubmissionServiceImpl implements SubmissionUseCase {
     
     private final SubmissionRepositoryPort submissionRepository;
     private final StudentServicePort studentService;
+    private final ExcelProcessingService excelProcessingService;
+    private final SubmissionGradeLogRepository gradeLogRepository;
     
     @Override
     public Flux<Submission> findAll() {
@@ -44,7 +52,6 @@ public class SubmissionServiceImpl implements SubmissionUseCase {
     
     @Override
     public Mono<PageResponseDTO<Submission>> findByTaskIdPaged(Long taskId, int page, int size) {
-        int offset = page * size;
         return submissionRepository.countByTaskId(taskId)
             .flatMap(total -> {
                 if (total == 0) {
@@ -63,7 +70,6 @@ public class SubmissionServiceImpl implements SubmissionUseCase {
     
     @Override
     public Mono<PageResponseDTO<Submission>> findByStudentIdPaged(Integer studentId, int page, int size) {
-        int offset = page * size;
         return submissionRepository.countByStudentId(studentId)
             .flatMap(total -> {
                 if (total == 0) {
@@ -89,6 +95,8 @@ public class SubmissionServiceImpl implements SubmissionUseCase {
                     }
                     submission.setSubmissionDate(OffsetDateTime.now());
                     submission.setStatus("submitted");
+                    submission.setPresented(false);
+                    submission.setIsLate(false);
                     submission.setCreatedAt(OffsetDateTime.now());
                     submission.setUpdatedAt(OffsetDateTime.now());
                     return submissionRepository.save(submission);
@@ -100,14 +108,100 @@ public class SubmissionServiceImpl implements SubmissionUseCase {
         return submissionRepository.findById(id)
                 .switchIfEmpty(Mono.error(new NotFoundException("Submission not found: " + id)))
                 .flatMap(submission -> {
+                    Double oldGrade = submission.getGrade();
+                    
                     submission.setGrade(request.grade());
                     submission.setFeedback(request.feedback());
                     submission.setGradedBy(request.gradedBy());
                     submission.setGradedAt(OffsetDateTime.now());
                     submission.setStatus("graded");
+                    submission.setPresented(request.presented() != null ? request.presented() : true);
+                    submission.setIsLate(request.isLate() != null ? request.isLate() : false);
+                    submission.setObservations(request.observations());
+                    
+                    if (request.isLate() != null && request.isLate() && request.justification() != null) {
+                        submission.setJustificationReason(request.justification());
+                        submission.setJustifiedAt(OffsetDateTime.now());
+                        submission.setJustifiedBy(request.gradedBy());
+                    }
+                    
+                    if (request.presented() != null && request.presented()) {
+                        submission.setPresentedAt(OffsetDateTime.now());
+                    }
+                    
                     submission.setUpdatedAt(OffsetDateTime.now());
+                    
+                    // Guardar log de cambio de nota
+                    if (oldGrade != null && !oldGrade.equals(request.grade())) {
+                        return gradeLogRepository.saveLog(id, oldGrade, request.grade(), request.gradedBy(), request.justification())
+                            .then(submissionRepository.save(submission));
+                    }
+                    
                     return submissionRepository.save(submission);
                 });
+    }
+    
+    @Transactional
+    public Mono<List<Submission>> bulkGrade(MultipartFile file, Integer gradedBy, Long taskId) {
+        return excelProcessingService.processExcel(file)
+            .flatMapMany(Flux::fromIterable)
+            .flatMap(row -> processGradeRow(row, gradedBy, taskId))
+            .collectList()
+            .doOnSuccess(list -> log.info("✅ Procesadas {} calificaciones masivas", list.size()));
+    }
+    
+    private Mono<Submission> processGradeRow(ExcelGradeRowDTO row, Integer gradedBy, Long taskId) {
+        Long finalTaskId = row.getTaskId() != null ? row.getTaskId() : taskId;
+        if (finalTaskId == null) {
+            return Mono.error(new BadRequestException("Task ID es requerido en cada fila o en el request"));
+        }
+        
+        return submissionRepository.findByTaskIdAndStudentId(finalTaskId, row.getStudentId())
+            .switchIfEmpty(createNewSubmission(finalTaskId, row.getStudentId()))
+            .flatMap(submission -> {
+                Double oldGrade = submission.getGrade();
+                
+                submission.setGrade(row.getGrade());
+                submission.setGradedBy(gradedBy);
+                submission.setGradedAt(OffsetDateTime.now());
+                submission.setStatus("graded");
+                submission.setPresented(row.getGrade() != null && row.getGrade() > 0);
+                submission.setIsLate(row.getIsLate());
+                submission.setObservations(row.getObservations());
+                
+                if (row.getIsLate() != null && row.getIsLate() && row.getJustification() != null) {
+                    submission.setJustificationReason(row.getJustification());
+                    submission.setJustifiedAt(OffsetDateTime.now());
+                    submission.setJustifiedBy(gradedBy);
+                }
+                
+                if (submission.getPresented() != null && submission.getPresented()) {
+                    submission.setPresentedAt(OffsetDateTime.now());
+                }
+                
+                submission.setUpdatedAt(OffsetDateTime.now());
+                
+                if (oldGrade != null && !oldGrade.equals(row.getGrade())) {
+                    return gradeLogRepository.saveLog(submission.getId(), oldGrade, row.getGrade(), gradedBy, row.getJustification())
+                        .then(submissionRepository.save(submission));
+                }
+                
+                return submissionRepository.save(submission);
+            });
+    }
+    
+    private Mono<Submission> createNewSubmission(Long taskId, Integer studentId) {
+        Submission submission = Submission.builder()
+                .taskId(taskId)
+                .studentId(studentId)
+                .submissionDate(OffsetDateTime.now())
+                .status("submitted")
+                .presented(false)
+                .isLate(false)
+                .createdAt(OffsetDateTime.now())
+                .updatedAt(OffsetDateTime.now())
+                .build();
+        return submissionRepository.save(submission);
     }
     
     @Override
@@ -129,14 +223,8 @@ public class SubmissionServiceImpl implements SubmissionUseCase {
     
     @Override
     public Mono<Submission> allowReattempt(Long id, Integer maxAttempts) {
-        return submissionRepository.findById(id)
-                .switchIfEmpty(Mono.error(new NotFoundException("Submission not found: " + id)))
-                .flatMap(submission -> {
-                    submission.setReattemptAllowed(true);
-                    submission.setMaxReattempts(maxAttempts != null ? maxAttempts : 1);
-                    submission.setUpdatedAt(OffsetDateTime.now());
-                    return submissionRepository.save(submission);
-                });
+        // Para entregas físicas, los reintentos no aplican
+        return Mono.error(new UnsupportedOperationException("Reintentos no soportados en entregas físicas"));
     }
     
     @Override
@@ -146,6 +234,7 @@ public class SubmissionServiceImpl implements SubmissionUseCase {
                 .flatMap(submission -> {
                     submission.setStatus("excused");
                     submission.setJustificationReason(reason);
+                    submission.setJustifiedAt(OffsetDateTime.now());
                     submission.setUpdatedAt(OffsetDateTime.now());
                     return submissionRepository.save(submission);
                 });
