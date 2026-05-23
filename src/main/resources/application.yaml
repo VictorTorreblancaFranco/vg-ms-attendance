@@ -97,3 +97,6 @@ springdoc:
     functional-endpoints:
       enabled: true
       paths: /api/**
+
+submission:
+  grace-period-days: 30

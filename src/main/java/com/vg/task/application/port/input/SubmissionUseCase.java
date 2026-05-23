@@ -4,8 +4,11 @@ import com.vg.task.domain.model.Submission;
 import com.vg.task.domain.dto.GradeRequestDTO;
 import com.vg.task.domain.dto.RubricGradeRequestDTO;
 import com.vg.task.domain.dto.PageResponseDTO;
+import org.springframework.web.multipart.MultipartFile;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+
+import java.util.List;
 
 public interface SubmissionUseCase {
     Flux<Submission> findAll();
@@ -21,4 +24,5 @@ public interface SubmissionUseCase {
     Mono<Submission> allowReattempt(Long id, Integer maxAttempts);
     Mono<Submission> excuse(Long id, String reason);
     Mono<Void> delete(Long id);
+    Mono<List<Submission>> bulkGrade(MultipartFile file, Integer gradedBy, Long taskId);
 }

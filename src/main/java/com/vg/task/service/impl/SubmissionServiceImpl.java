@@ -4,6 +4,7 @@ import com.vg.task.application.port.input.SubmissionUseCase;
 import com.vg.task.application.port.output.SubmissionRepositoryPort;
 import com.vg.task.application.port.output.StudentServicePort;
 import com.vg.task.domain.model.Submission;
+import com.vg.task.domain.model.Task;
 import com.vg.task.domain.dto.GradeRequestDTO;
 import com.vg.task.domain.dto.RubricGradeRequestDTO;
 import com.vg.task.domain.dto.PageResponseDTO;
@@ -11,9 +12,11 @@ import com.vg.task.domain.dto.excel.ExcelGradeRowDTO;
 import com.vg.task.exception.BadRequestException;
 import com.vg.task.exception.NotFoundException;
 import com.vg.task.repository.SubmissionGradeLogRepository;
+import com.vg.task.repository.TaskRepository;
 import com.vg.task.service.ExcelProcessingService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -21,6 +24,7 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.time.OffsetDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -35,6 +39,10 @@ public class SubmissionServiceImpl implements SubmissionUseCase {
     private final StudentServicePort studentService;
     private final ExcelProcessingService excelProcessingService;
     private final SubmissionGradeLogRepository gradeLogRepository;
+    private final TaskRepository taskRepository;
+    
+    @Value("${submission.grace-period-days:30}")
+    private int gracePeriodDays;
     
     @Override
     public Flux<Submission> findAll() {
@@ -96,11 +104,10 @@ public class SubmissionServiceImpl implements SubmissionUseCase {
                     return Mono.error(new NotFoundException("Student not found: " + submission.getStudentId()));
                 }
                 
-                // UPSERT: Si existe, actualiza; si no, crea
                 return submissionRepository.findByTaskIdAndStudentId(
                         submission.getTaskId(), submission.getStudentId())
                     .flatMap(existing -> {
-                        log.info("📝 Actualizando entrega existente para tarea {} estudiante {}", 
+                        log.info("📝 Actualizando registro para tarea {} estudiante {}", 
                                 submission.getTaskId(), submission.getStudentId());
                         existing.setJustificationReason(submission.getJustificationReason());
                         existing.setUpdatedAt(OffsetDateTime.now());
@@ -108,7 +115,7 @@ public class SubmissionServiceImpl implements SubmissionUseCase {
                     })
                     .switchIfEmpty(
                         Mono.defer(() -> {
-                            log.info("📝 Creando nueva entrega para tarea {} estudiante {}", 
+                            log.info("📝 Creando nuevo registro para tarea {} estudiante {}", 
                                     submission.getTaskId(), submission.getStudentId());
                             submission.setSubmissionDate(OffsetDateTime.now());
                             submission.setStatus("submitted");
@@ -126,39 +133,108 @@ public class SubmissionServiceImpl implements SubmissionUseCase {
     public Mono<Submission> grade(Long id, GradeRequestDTO request) {
         return submissionRepository.findById(id)
                 .switchIfEmpty(Mono.error(new NotFoundException("Submission not found: " + id)))
-                .flatMap(submission -> {
-                    Double oldGrade = submission.getGrade();
-                    
-                    submission.setGrade(request.grade());
-                    submission.setFeedback(request.feedback());
-                    submission.setGradedBy(request.gradedBy());
-                    submission.setGradedAt(OffsetDateTime.now());
-                    submission.setStatus("graded");
-                    submission.setPresented(request.presented() != null ? request.presented() : true);
-                    submission.setIsLate(request.isLate() != null ? request.isLate() : false);
-                    submission.setObservations(request.observations());
-                    
-                    if (request.isLate() != null && request.isLate() && request.justification() != null) {
-                        submission.setJustificationReason(request.justification());
-                        submission.setJustifiedAt(OffsetDateTime.now());
-                        submission.setJustifiedBy(request.gradedBy());
-                    }
-                    
-                    if (request.presented() != null && request.presented()) {
-                        submission.setPresentedAt(OffsetDateTime.now());
-                    }
-                    
-                    submission.setUpdatedAt(OffsetDateTime.now());
-                    
-                    if (oldGrade != null && !oldGrade.equals(request.grade())) {
-                        return gradeLogRepository.saveLog(id, oldGrade, request.grade(), request.gradedBy(), request.justification())
-                            .then(submissionRepository.save(submission));
-                    }
-                    
-                    return submissionRepository.save(submission);
-                });
+                .flatMap(submission -> 
+                    validateTaskGradingPeriod(submission.getTaskId())
+                        .then(validateGradeRange(request.grade()))
+                        .then(validateLateWithJustification(request))
+                        .then(Mono.defer(() -> {
+                            Double oldGrade = submission.getGrade();
+                            OffsetDateTime now = OffsetDateTime.now();
+                            
+                            submission.setGrade(request.grade());
+                            submission.setFeedback(request.feedback());
+                            submission.setGradedBy(request.gradedBy());
+                            submission.setGradedAt(now);
+                            submission.setStatus("graded");
+                            submission.setPresented(request.presented() != null ? request.presented() : true);
+                            submission.setIsLate(request.isLate() != null ? request.isLate() : false);
+                            submission.setObservations(request.observations());
+                            
+                            if (request.isLate() != null && request.isLate() && request.justification() != null) {
+                                submission.setJustificationReason(request.justification());
+                                submission.setJustifiedAt(now);
+                                submission.setJustifiedBy(request.gradedBy());
+                            }
+                            
+                            if (request.presented() != null && request.presented()) {
+                                submission.setPresentedAt(now);
+                            }
+                            
+                            submission.setUpdatedAt(now);
+                            
+                            if (oldGrade != null && !oldGrade.equals(request.grade())) {
+                                return gradeLogRepository.saveLog(id, oldGrade, request.grade(), request.gradedBy(), request.justification())
+                                    .then(submissionRepository.save(submission));
+                            }
+                            
+                            return submissionRepository.save(submission);
+                        }))
+                );
     }
     
+    private Mono<Void> validateTaskGradingPeriod(Long taskId) {
+        return taskRepository.findById(taskId)
+            .switchIfEmpty(Mono.error(new NotFoundException("Task not found: " + taskId)))
+            .flatMap(task -> {
+                OffsetDateTime now = OffsetDateTime.now();
+                OffsetDateTime dueDate = task.getDueDate();
+                String taskStatus = task.getStatus();
+                
+                if ("closed".equals(taskStatus)) {
+                    return Mono.error(new BadRequestException(
+                        "No se puede calificar: La tarea '" + task.getTitle() + "' está cerrada."
+                    ));
+                }
+                
+                if ("archived".equals(taskStatus)) {
+                    return Mono.error(new BadRequestException(
+                        "No se puede calificar: La tarea '" + task.getTitle() + "' está archivada."
+                    ));
+                }
+                
+                if (now.isAfter(dueDate)) {
+                    long daysLate = ChronoUnit.DAYS.between(dueDate, now);
+                    
+                    if (daysLate > gracePeriodDays) {
+                        return Mono.error(new BadRequestException(
+                            String.format("No se puede calificar: La fecha límite fue hace %d días. Período de gracia es de %d días.", daysLate, gracePeriodDays)
+                        ));
+                    }
+                    
+                    log.warn("⚠️ Calificando tarea {} con {} días de retraso (dentro del período de gracia)", taskId, daysLate);
+                }
+                
+                return Mono.empty();
+            });
+    }
+    
+    private Mono<Void> validateGradeRange(Double grade) {
+        if (grade == null) {
+            return Mono.error(new BadRequestException("La nota es requerida"));
+        }
+        if (grade < 0 || grade > 20) {
+            return Mono.error(new BadRequestException("La nota debe estar entre 0 y 20"));
+        }
+        return Mono.empty();
+    }
+    
+    private Mono<Void> validateLateWithJustification(GradeRequestDTO request) {
+        if (request.isLate() != null && request.isLate()) {
+            if (request.justification() == null || request.justification().isBlank()) {
+                return Mono.error(new BadRequestException(
+                    "Debe proporcionar una justificación cuando la entrega es tardía"
+                ));
+            }
+            if (request.justification().length() < 10) {
+                return Mono.error(new BadRequestException(
+                    "La justificación debe tener al menos 10 caracteres"
+                ));
+            }
+        }
+        return Mono.empty();
+    }
+    
+    @Override
     @Transactional
     public Mono<List<Submission>> bulkGrade(MultipartFile file, Integer gradedBy, Long taskId) {
         log.info("📊 Iniciando carga masiva con transacción - gradedBy: {}, taskId: {}", gradedBy, taskId);
@@ -174,13 +250,12 @@ public class SubmissionServiceImpl implements SubmissionUseCase {
                     ));
                 }
                 
-                // Validar duplicados en el Excel (misma fila repetida)
                 Set<String> seen = new HashSet<>();
                 List<String> duplicates = new ArrayList<>();
                 for (ExcelGradeRowDTO row : validRows) {
-                    String key = row.getTaskId() + "|" + row.getStudentId();
+                    String key = (row.getTaskId() != null ? row.getTaskId() : taskId) + "|" + row.getStudentId();
                     if (seen.contains(key)) {
-                        duplicates.add("Tarea " + row.getTaskId() + " - Estudiante " + row.getStudentId());
+                        duplicates.add("Tarea " + (row.getTaskId() != null ? row.getTaskId() : taskId) + " - Estudiante " + row.getStudentId());
                     }
                     seen.add(key);
                 }
@@ -189,20 +264,34 @@ public class SubmissionServiceImpl implements SubmissionUseCase {
                     return Mono.error(new BadRequestException("Duplicados encontrados en el Excel: " + String.join(", ", duplicates)));
                 }
                 
-                // Procesar todas las filas (si algo falla, todo se revierte por @Transactional)
-                return Flux.fromIterable(validRows)
-                    .concatMap(row -> processGradeRow(row, gradedBy, taskId))
+                Long finalTaskId = validRows.get(0).getTaskId() != null ? validRows.get(0).getTaskId() : taskId;
+                return validateTaskGradingPeriod(finalTaskId)
+                    .thenMany(Flux.fromIterable(validRows)
+                        .concatMap(row -> {
+                            Long rowTaskId = row.getTaskId() != null ? row.getTaskId() : taskId;
+                            if (row.getGrade() != null && (row.getGrade() < 0 || row.getGrade() > 20)) {
+                                return Mono.error(new BadRequestException(
+                                    "Nota inválida para estudiante " + row.getStudentId() + ": " + row.getGrade()
+                                ));
+                            }
+                            if (row.getIsLate() != null && row.getIsLate() && 
+                                (row.getJustification() == null || row.getJustification().isBlank())) {
+                                return Mono.error(new BadRequestException(
+                                    "Justificación requerida para estudiante " + row.getStudentId()
+                                ));
+                            }
+                            return processGradeRow(row, gradedBy, rowTaskId);
+                        }))
                     .collectList()
-                    .doOnSuccess(list -> log.info("✅ Transacción completada: {} registros guardados", list.size()))
-                    .doOnError(error -> log.error("❌ Transacción revertida - Error: {}", error.getMessage()));
+                    .map(list -> {
+                        log.info("✅ Transacción completada: {} registros guardados", list.size());
+                        return list;
+                    });
             });
     }
     
     private Mono<Submission> processGradeRow(ExcelGradeRowDTO row, Integer gradedBy, Long taskId) {
         Long finalTaskId = row.getTaskId() != null ? row.getTaskId() : taskId;
-        if (finalTaskId == null) {
-            return Mono.error(new BadRequestException("Task ID es requerido para estudiante " + row.getStudentId()));
-        }
         
         return submissionRepository.findByTaskIdAndStudentId(finalTaskId, row.getStudentId())
             .switchIfEmpty(createNewSubmission(finalTaskId, row.getStudentId()))
@@ -256,17 +345,20 @@ public class SubmissionServiceImpl implements SubmissionUseCase {
     public Mono<Submission> gradeWithRubric(Long id, RubricGradeRequestDTO request) {
         return submissionRepository.findById(id)
                 .switchIfEmpty(Mono.error(new NotFoundException("Submission not found: " + id)))
-                .flatMap(submission -> {
-                    Double totalScore = request.scores().stream()
-                            .mapToDouble(item -> item.score())
-                            .sum();
-                    submission.setGrade(totalScore);
-                    submission.setGradedBy(request.gradedBy());
-                    submission.setGradedAt(OffsetDateTime.now());
-                    submission.setStatus("graded");
-                    submission.setUpdatedAt(OffsetDateTime.now());
-                    return submissionRepository.save(submission);
-                });
+                .flatMap(submission -> 
+                    validateTaskGradingPeriod(submission.getTaskId())
+                        .then(Mono.defer(() -> {
+                            Double totalScore = request.scores().stream()
+                                    .mapToDouble(item -> item.score())
+                                    .sum();
+                            submission.setGrade(totalScore);
+                            submission.setGradedBy(request.gradedBy());
+                            submission.setGradedAt(OffsetDateTime.now());
+                            submission.setStatus("graded");
+                            submission.setUpdatedAt(OffsetDateTime.now());
+                            return submissionRepository.save(submission);
+                        }))
+                );
     }
     
     @Override
@@ -278,13 +370,16 @@ public class SubmissionServiceImpl implements SubmissionUseCase {
     public Mono<Submission> excuse(Long id, String reason) {
         return submissionRepository.findById(id)
                 .switchIfEmpty(Mono.error(new NotFoundException("Submission not found: " + id)))
-                .flatMap(submission -> {
-                    submission.setStatus("excused");
-                    submission.setJustificationReason(reason);
-                    submission.setJustifiedAt(OffsetDateTime.now());
-                    submission.setUpdatedAt(OffsetDateTime.now());
-                    return submissionRepository.save(submission);
-                });
+                .flatMap(submission -> 
+                    validateTaskGradingPeriod(submission.getTaskId())
+                        .then(Mono.defer(() -> {
+                            submission.setStatus("excused");
+                            submission.setJustificationReason(reason);
+                            submission.setJustifiedAt(OffsetDateTime.now());
+                            submission.setUpdatedAt(OffsetDateTime.now());
+                            return submissionRepository.save(submission);
+                        }))
+                );
     }
     
     @Override
