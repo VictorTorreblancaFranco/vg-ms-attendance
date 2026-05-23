@@ -6,7 +6,6 @@ import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.cache.caffeine.CaffeineCacheManager;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-
 import java.util.concurrent.TimeUnit;
 
 @Configuration
@@ -18,7 +17,8 @@ public class CacheConfig {
         CaffeineCacheManager cacheManager = new CaffeineCacheManager("classes", "students");
         cacheManager.setCaffeine(Caffeine.newBuilder()
             .expireAfterWrite(1, TimeUnit.HOURS)
-            .maximumSize(100));
+            .maximumSize(100)
+            .recordStats());
         return cacheManager;
     }
 }
