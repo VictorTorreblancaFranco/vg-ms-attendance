@@ -15,45 +15,32 @@ import java.time.OffsetDateTime;
 @AllArgsConstructor
 @Table("tasks")
 public class Task {
-    
     @Id
     private Long id;
     private String title;
     private String description;
-    private String instructions; // Aquí va el resumen de clase/instrucciones
-    
+    private String instructions;
     @Column("class_id")
     private Integer classId;
-    
     @Column("criterion_id")
     private Integer criterionId;
-    
     @Column("points_value")
     private Double pointsValue;
-    
     @Column("due_date")
     private OffsetDateTime dueDate;
-    
     @Column("scheduled_publish_date")
     private OffsetDateTime scheduledPublishDate;
-    
     @Column("scheduled_close_date")
     private OffsetDateTime scheduledCloseDate;
-    
     private String status;
-    
     @Column("is_deleted")
     private Boolean isDeleted;
-    
     @Column("created_by")
     private Integer createdBy;
-    
     @Column("created_at")
     private OffsetDateTime createdAt;
-    
     @Column("updated_at")
     private OffsetDateTime updatedAt;
-    
     @Column("deleted_at")
     private OffsetDateTime deletedAt;
 }

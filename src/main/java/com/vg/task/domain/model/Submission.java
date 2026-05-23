@@ -15,52 +15,35 @@ import java.time.OffsetDateTime;
 @AllArgsConstructor
 @Table("submissions")
 public class Submission {
-
     @Id
     private Long id;
-
     @Column("task_id")
     private Long taskId;
-
     @Column("student_id")
     private Integer studentId;
-
     @Column("submission_date")
     private OffsetDateTime submissionDate;
-
     private String status;
     private Double grade;
     private String feedback;
-
     @Column("graded_by")
     private Integer gradedBy;
-
     @Column("graded_at")
     private OffsetDateTime gradedAt;
-
     @Column("justification_reason")
     private String justificationReason;
-
-    @Column("created_at")
-    private OffsetDateTime createdAt;
-
-    @Column("updated_at")
-    private OffsetDateTime updatedAt;
-
-    // Nuevos campos para entregas físicas
     private Boolean presented;
-    
     @Column("presented_at")
     private OffsetDateTime presentedAt;
-    
     private String observations;
-    
     @Column("is_late")
     private Boolean isLate;
-    
     @Column("justified_at")
     private OffsetDateTime justifiedAt;
-    
     @Column("justified_by")
     private Integer justifiedBy;
+    @Column("created_at")
+    private OffsetDateTime createdAt;
+    @Column("updated_at")
+    private OffsetDateTime updatedAt;
 }

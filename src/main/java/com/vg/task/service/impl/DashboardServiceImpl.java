@@ -175,4 +175,18 @@ public class DashboardServiceImpl implements DashboardService {
         long c16_20 = submissions.stream().filter(s -> s.getGrade() != null && s.getGrade() >= 16 && s.getGrade() <= 20).count();
         return new GradeDistributionDTO(c0_5, c6_10, c11_15, c16_20);
     }
+
+    public Mono<Map<String, Long>> getGradeDistributionForDashboard() {
+        return submissionRepository.findAll()
+            .filter(s -> s.getGrade() != null)
+            .collectList()
+            .map(submissions -> {
+                Map<String, Long> distribution = new HashMap<>();
+                distribution.put("0-5", submissions.stream().filter(s -> s.getGrade() <= 5).count());
+                distribution.put("6-10", submissions.stream().filter(s -> s.getGrade() > 5 && s.getGrade() <= 10).count());
+                distribution.put("11-15", submissions.stream().filter(s -> s.getGrade() > 10 && s.getGrade() <= 15).count());
+                distribution.put("16-20", submissions.stream().filter(s -> s.getGrade() > 15 && s.getGrade() <= 20).count());
+                return distribution;
+            });
+    }
 }
