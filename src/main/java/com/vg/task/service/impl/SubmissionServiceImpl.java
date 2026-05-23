@@ -131,7 +131,6 @@ public class SubmissionServiceImpl implements SubmissionUseCase {
                     
                     submission.setUpdatedAt(OffsetDateTime.now());
                     
-                    // Guardar log de cambio de nota
                     if (oldGrade != null && !oldGrade.equals(request.grade())) {
                         return gradeLogRepository.saveLog(id, oldGrade, request.grade(), request.gradedBy(), request.justification())
                             .then(submissionRepository.save(submission));
@@ -144,9 +143,15 @@ public class SubmissionServiceImpl implements SubmissionUseCase {
     @Transactional
     public Mono<List<Submission>> bulkGrade(MultipartFile file, Integer gradedBy, Long taskId) {
         return excelProcessingService.processExcel(file)
-            .flatMapMany(Flux::fromIterable)
-            .flatMap(row -> processGradeRow(row, gradedBy, taskId))
-            .collectList()
+            .flatMap(result -> {
+                List<ExcelGradeRowDTO> validRows = result.validRows();
+                if (validRows.isEmpty()) {
+                    return Mono.error(new BadRequestException("No hay filas válidas en el Excel. Errores: " + result.errors().size()));
+                }
+                return Flux.fromIterable(validRows)
+                    .flatMap(row -> processGradeRow(row, gradedBy, taskId))
+                    .collectList();
+            })
             .doOnSuccess(list -> log.info("✅ Procesadas {} calificaciones masivas", list.size()));
     }
     
@@ -223,7 +228,6 @@ public class SubmissionServiceImpl implements SubmissionUseCase {
     
     @Override
     public Mono<Submission> allowReattempt(Long id, Integer maxAttempts) {
-        // Para entregas físicas, los reintentos no aplican
         return Mono.error(new UnsupportedOperationException("Reintentos no soportados en entregas físicas"));
     }
     

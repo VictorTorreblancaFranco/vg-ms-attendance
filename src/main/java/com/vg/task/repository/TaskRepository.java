@@ -18,4 +18,5 @@ public interface TaskRepository extends ReactiveCrudRepository<Task, Long> {
     Flux<Task> findByScheduledPublishDateBeforeAndStatusAndIsDeletedFalse(OffsetDateTime date, String status);
     Flux<Task> findByScheduledCloseDateBeforeAndStatusAndIsDeletedFalse(OffsetDateTime date, String status);
     Flux<Task> findByDueDateBeforeAndStatusAndIsDeletedFalse(OffsetDateTime date, String status);
+    Flux<Task> findByDueDateBetweenAndStatusAndIsDeletedFalse(OffsetDateTime from, OffsetDateTime to, String status);
 }

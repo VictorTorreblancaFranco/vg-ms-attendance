@@ -8,15 +8,6 @@ import com.vg.task.domain.dto.UpdateTaskRequestDTO;
 import com.vg.task.domain.dto.PageResponseDTO;
 import com.vg.task.mapper.TaskMapper;
 import com.vg.task.service.RateLimitService;
-import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.Parameter;
-import io.swagger.v3.oas.annotations.Parameters;
-import io.swagger.v3.oas.annotations.enums.ParameterIn;
-import io.swagger.v3.oas.annotations.media.Content;
-import io.swagger.v3.oas.annotations.media.ExampleObject;
-import io.swagger.v3.oas.annotations.responses.ApiResponse;
-import io.swagger.v3.oas.annotations.responses.ApiResponses;
-import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -31,82 +22,54 @@ import java.util.Map;
 
 @Component
 @RequiredArgsConstructor
-@Tag(name = "Tareas", description = "API para gestionar tareas académicas")
 public class TaskHandler {
 
     private final TaskUseCase taskUseCase;
     private final TaskMapper mapper;
-    private final RateLimitService rateLimitService;
-
-    private Mono<ServerResponse> checkRateLimit(ServerRequest request) {
-        String clientIp = request.remoteAddress()
-                .map(addr -> addr.getAddress().getHostAddress())
-                .orElse("unknown");
-        String path = request.path();
-
-        return rateLimitService.allowRequest(clientIp, path)
-                .flatMap(allowed -> {
-                    if (!allowed) {
-                        return ServerResponse.status(429)
-                                .bodyValue(Map.of(
-                                        "error", "Too Many Requests",
-                                        "message", "Has excedido el límite de peticiones para este endpoint",
-                                        "status", 429
-                                ));
-                    }
-                    return Mono.empty();
-                });
-    }
-
-    private Mono<ServerResponse> withRateLimit(ServerRequest request, Mono<ServerResponse> response) {
-        return checkRateLimit(request).switchIfEmpty(response);
-    }
 
     public Mono<ServerResponse> findAll(ServerRequest request) {
-        return withRateLimit(request, ServerResponse.ok()
+        return ServerResponse.ok()
                 .contentType(MediaType.APPLICATION_JSON)
-                .body(taskUseCase.findAll().map(mapper::toResponse), TaskResponseDTO.class));
+                .body(taskUseCase.findAll().map(mapper::toResponse), TaskResponseDTO.class);
     }
 
     public Mono<ServerResponse> findAllPaged(ServerRequest request) {
-        return withRateLimit(request, Mono.defer(() -> {
-            int page = Integer.parseInt(request.queryParam("page").orElse("0"));
-            int size = Integer.parseInt(request.queryParam("size").orElse("20"));
-            return ServerResponse.ok()
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .body(taskUseCase.findAllPaged(page, size)
-                            .map(pageResponse -> new PageResponseDTO<>(
-                                    pageResponse.content().stream().map(mapper::toResponse).toList(),
-                                    pageResponse.pageNumber(),
-                                    pageResponse.pageSize(),
-                                    pageResponse.totalElements(),
-                                    pageResponse.totalPages(),
-                                    pageResponse.first(),
-                                    pageResponse.last()
-                            )), PageResponseDTO.class);
-        }));
+        int page = Integer.parseInt(request.queryParam("page").orElse("0"));
+        int size = Integer.parseInt(request.queryParam("size").orElse("20"));
+        return ServerResponse.ok()
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(taskUseCase.findAllPaged(page, size)
+                        .map(pageResponse -> new PageResponseDTO<>(
+                                pageResponse.content().stream().map(mapper::toResponse).toList(),
+                                pageResponse.pageNumber(),
+                                pageResponse.pageSize(),
+                                pageResponse.totalElements(),
+                                pageResponse.totalPages(),
+                                pageResponse.first(),
+                                pageResponse.last()
+                        )), PageResponseDTO.class);
     }
 
     public Mono<ServerResponse> findById(ServerRequest request) {
         Long id = Long.parseLong(request.pathVariable("id"));
-        return withRateLimit(request, taskUseCase.findById(id)
+        return taskUseCase.findById(id)
                 .map(mapper::toResponse)
                 .flatMap(response -> ServerResponse.ok().bodyValue(response))
-                .switchIfEmpty(ServerResponse.notFound().build()));
+                .switchIfEmpty(ServerResponse.notFound().build());
     }
 
     public Mono<ServerResponse> findByStatus(ServerRequest request) {
         String status = request.pathVariable("status");
-        return withRateLimit(request, ServerResponse.ok()
+        return ServerResponse.ok()
                 .contentType(MediaType.APPLICATION_JSON)
-                .body(taskUseCase.findByStatus(status).map(mapper::toResponse), TaskResponseDTO.class));
+                .body(taskUseCase.findByStatus(status).map(mapper::toResponse), TaskResponseDTO.class);
     }
 
     public Mono<ServerResponse> findByClassId(ServerRequest request) {
         Integer classId = Integer.parseInt(request.pathVariable("classId"));
-        return withRateLimit(request, ServerResponse.ok()
+        return ServerResponse.ok()
                 .contentType(MediaType.APPLICATION_JSON)
-                .body(taskUseCase.findByClassId(classId).map(mapper::toResponse), TaskResponseDTO.class));
+                .body(taskUseCase.findByClassId(classId).map(mapper::toResponse), TaskResponseDTO.class);
     }
 
     public Mono<ServerResponse> filter(ServerRequest request) {
@@ -118,41 +81,41 @@ public class TaskHandler {
                 request.queryParam("toDate").map(OffsetDateTime::parse).orElse(null),
                 false
         );
-        return withRateLimit(request, ServerResponse.ok()
+        return ServerResponse.ok()
                 .contentType(MediaType.APPLICATION_JSON)
-                .body(taskUseCase.filter(filter).map(mapper::toResponse), TaskResponseDTO.class));
+                .body(taskUseCase.filter(filter).map(mapper::toResponse), TaskResponseDTO.class);
     }
 
     public Mono<ServerResponse> exportCsv(ServerRequest request) {
         TaskFilterDTO filter = new TaskFilterDTO(null, null, null, null, null, false);
         String timestamp = OffsetDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"));
-        return withRateLimit(request, taskUseCase.exportToCsv(filter)
+        return taskUseCase.exportToCsv(filter)
                 .flatMap(data -> ServerResponse.ok()
                         .header("Content-Disposition", "attachment; filename=tasks_" + timestamp + ".csv")
                         .contentType(MediaType.parseMediaType("text/csv; charset=UTF-8"))
-                        .bodyValue(data)));
+                        .bodyValue(data));
     }
 
     public Mono<ServerResponse> exportExcel(ServerRequest request) {
         TaskFilterDTO filter = new TaskFilterDTO(null, null, null, null, null, false);
         String timestamp = OffsetDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"));
-        return withRateLimit(request, taskUseCase.exportToExcel(filter)
+        return taskUseCase.exportToExcel(filter)
                 .flatMap(data -> ServerResponse.ok()
                         .header("Content-Disposition", "attachment; filename=tasks_" + timestamp + ".xlsx")
                         .contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
-                        .bodyValue(data)));
+                        .bodyValue(data));
     }
 
     public Mono<ServerResponse> save(ServerRequest request) {
-        return withRateLimit(request, request.bodyToMono(TaskRequestDTO.class)
+        return request.bodyToMono(TaskRequestDTO.class)
                 .map(mapper::toDomain)
                 .flatMap(taskUseCase::save)
                 .map(mapper::toResponse)
-                .flatMap(response -> ServerResponse.status(HttpStatus.CREATED).bodyValue(response)));
+                .flatMap(response -> ServerResponse.status(HttpStatus.CREATED).bodyValue(response));
     }
 
     public Mono<ServerResponse> update(ServerRequest request) {
-        return withRateLimit(request, request.bodyToMono(UpdateTaskRequestDTO.class)
+        return request.bodyToMono(UpdateTaskRequestDTO.class)
                 .flatMap(dto -> taskUseCase.findById(dto.id())
                         .flatMap(existing -> {
                             if (dto.title() != null) existing.setTitle(dto.title());
@@ -169,42 +132,55 @@ public class TaskHandler {
                         }))
                 .map(mapper::toResponse)
                 .flatMap(response -> ServerResponse.ok().bodyValue(response))
-                .switchIfEmpty(ServerResponse.notFound().build()));
+                .switchIfEmpty(ServerResponse.notFound().build());
     }
 
     public Mono<ServerResponse> delete(ServerRequest request) {
         Long id = Long.parseLong(request.pathVariable("id"));
-        return withRateLimit(request, taskUseCase.deleteById(id)
-                .then(ServerResponse.noContent().build()));
+        return taskUseCase.deleteById(id)
+                .then(ServerResponse.noContent().build());
     }
 
     public Mono<ServerResponse> activate(ServerRequest request) {
         Long id = Long.parseLong(request.pathVariable("id"));
-        return withRateLimit(request, taskUseCase.activate(id)
+        return taskUseCase.activate(id)
                 .map(mapper::toResponse)
                 .flatMap(response -> ServerResponse.ok().bodyValue(response))
                 .onErrorResume(IllegalStateException.class, e ->
-                        ServerResponse.badRequest().bodyValue(Map.of("error", e.getMessage()))));
+                        ServerResponse.badRequest().bodyValue(Map.of("error", e.getMessage())));
     }
 
     public Mono<ServerResponse> deactivate(ServerRequest request) {
         Long id = Long.parseLong(request.pathVariable("id"));
-        return withRateLimit(request, taskUseCase.deactivate(id)
+        return taskUseCase.deactivate(id)
                 .map(mapper::toResponse)
-                .flatMap(response -> ServerResponse.ok().bodyValue(response)));
+                .flatMap(response -> ServerResponse.ok().bodyValue(response));
     }
 
     public Mono<ServerResponse> close(ServerRequest request) {
         Long id = Long.parseLong(request.pathVariable("id"));
-        return withRateLimit(request, taskUseCase.close(id)
+        return taskUseCase.close(id)
                 .map(mapper::toResponse)
-                .flatMap(response -> ServerResponse.ok().bodyValue(response)));
+                .flatMap(response -> ServerResponse.ok().bodyValue(response));
     }
 
     public Mono<ServerResponse> restore(ServerRequest request) {
         Long id = Long.parseLong(request.pathVariable("id"));
-        return withRateLimit(request, taskUseCase.restore(id)
+        return taskUseCase.restore(id)
                 .map(mapper::toResponse)
-                .flatMap(response -> ServerResponse.ok().bodyValue(response)));
+                .flatMap(response -> ServerResponse.ok().bodyValue(response));
+    }
+
+    public Mono<ServerResponse> findOverdue(ServerRequest request) {
+        return ServerResponse.ok()
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(taskUseCase.findOverdueTasks().map(mapper::toResponse), TaskResponseDTO.class);
+    }
+
+    public Mono<ServerResponse> findUpcoming(ServerRequest request) {
+        int days = Integer.parseInt(request.queryParam("days").orElse("7"));
+        return ServerResponse.ok()
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(taskUseCase.findUpcomingTasks(days).map(mapper::toResponse), TaskResponseDTO.class);
     }
 }

@@ -69,7 +69,6 @@ public class SubmissionHandler {
                 .flatMap(response -> ServerResponse.ok().bodyValue(response));
     }
 
-    // NUEVO ENDPOINT: Carga masiva por Excel
     public Mono<ServerResponse> bulkGrade(ServerRequest request) {
         return request.multipartData()
             .flatMap(parts -> {

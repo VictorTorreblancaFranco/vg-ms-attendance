@@ -22,4 +22,6 @@ public interface TaskUseCase {
     Mono<byte[]> exportToCsv(TaskFilterDTO filter);
     Mono<byte[]> exportToExcel(TaskFilterDTO filter);
     Mono<PageResponseDTO<Task>> findAllPaged(int page, int size);
+    Flux<Task> findOverdueTasks();
+    Flux<Task> findUpcomingTasks(int days);
 }

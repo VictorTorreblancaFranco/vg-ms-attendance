@@ -21,24 +21,6 @@ public class SubmissionRouter {
     private static final String API_V1 = "/api/v1/submissions";
 
     @Bean
-    @RouterOperations({
-        @RouterOperation(path = API_V1, beanClass = SubmissionHandler.class, beanMethod = "findAll", method = RequestMethod.GET,
-            operation = @Operation(operationId = "findAllSubmissions", summary = "Listar todas las entregas")),
-        @RouterOperation(path = API_V1 + "/{id}", beanClass = SubmissionHandler.class, beanMethod = "findById", method = RequestMethod.GET,
-            operation = @Operation(operationId = "findSubmissionById", summary = "Buscar entrega por ID")),
-        @RouterOperation(path = API_V1 + "/task/{taskId}", beanClass = SubmissionHandler.class, beanMethod = "findByTaskId", method = RequestMethod.GET,
-            operation = @Operation(operationId = "findSubmissionsByTask", summary = "Listar entregas por tarea")),
-        @RouterOperation(path = API_V1 + "/student/{studentId}", beanClass = SubmissionHandler.class, beanMethod = "findByStudentId", method = RequestMethod.GET,
-            operation = @Operation(operationId = "findSubmissionsByStudent", summary = "Listar entregas por estudiante")),
-        @RouterOperation(path = API_V1 + "/submit", beanClass = SubmissionHandler.class, beanMethod = "submit", method = RequestMethod.POST,
-            operation = @Operation(operationId = "submitAssignment", summary = "Registrar entrega física")),
-        @RouterOperation(path = API_V1 + "/{id}/grade", beanClass = SubmissionHandler.class, beanMethod = "grade", method = RequestMethod.PUT,
-            operation = @Operation(operationId = "gradeSubmission", summary = "Calificar una entrega")),
-        @RouterOperation(path = API_V1 + "/bulk-grade", beanClass = SubmissionHandler.class, beanMethod = "bulkGrade", method = RequestMethod.POST,
-            operation = @Operation(operationId = "bulkGradeSubmissions", summary = "Carga masiva de calificaciones desde Excel")),
-        @RouterOperation(path = API_V1 + "/{id}", beanClass = SubmissionHandler.class, beanMethod = "delete", method = RequestMethod.DELETE,
-            operation = @Operation(operationId = "deleteSubmission", summary = "Eliminar entrega"))
-    })
     public RouterFunction<ServerResponse> submissionRoutes(SubmissionHandler handler) {
         return route(GET(API_V1), handler::findAll)
                 .andRoute(GET(API_V1 + "/{id}"), handler::findById)

@@ -89,7 +89,6 @@ public class TaskServiceImpl implements TaskUseCase {
     public Mono<Task> save(Task task) {
         log.info("📝 Creando tarea: {}", task.getTitle());
         
-        // Solo validar fecha de entrega (ya no se exigen archivos)
         if (task.getDueDate() == null) {
             return Mono.error(new BadRequestException("La fecha de entrega es requerida"));
         }
@@ -206,5 +205,19 @@ public class TaskServiceImpl implements TaskUseCase {
         return filter(filter)
             .collectList()
             .flatMap(exportService::exportToExcel);
+    }
+
+    @Override
+    public Flux<Task> findOverdueTasks() {
+        return taskRepository.findByDueDateBeforeAndStatusAndIsDeletedFalse(OffsetDateTime.now(), "published")
+                .filter(task -> !Boolean.TRUE.equals(task.getIsDeleted()));
+    }
+
+    @Override
+    public Flux<Task> findUpcomingTasks(int days) {
+        OffsetDateTime now = OffsetDateTime.now();
+        OffsetDateTime future = now.plusDays(days);
+        return taskRepository.findByDueDateBetweenAndStatusAndIsDeletedFalse(now, future, "published")
+                .filter(task -> !Boolean.TRUE.equals(task.getIsDeleted()));
     }
 }
