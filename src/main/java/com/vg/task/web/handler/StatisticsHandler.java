@@ -1,7 +1,11 @@
 package com.vg.task.web.handler;
 
-import com.vg.task.service.PdfExportService;
-import com.vg.task.service.StatisticsService;
+import com.vg.task.domain.dto.TaskDifficultyDTO;
+import com.vg.task.domain.dto.TeacherStatsDTO;
+import com.vg.task.domain.dto.StudentSummaryDTO;
+import com.vg.task.domain.model.Task;
+import com.vg.task.service.impl.StatisticsServiceImpl;
+import com.vg.task.service.impl.PdfExportService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
@@ -13,38 +17,34 @@ import reactor.core.publisher.Mono;
 @RequiredArgsConstructor
 public class StatisticsHandler {
 
-    private final StatisticsService statisticsService;
+    private final StatisticsServiceImpl statisticsService;
     private final PdfExportService pdfExportService;
 
     public Mono<ServerResponse> getHardestTasks(ServerRequest request) {
         int limit = Integer.parseInt(request.queryParam("limit").orElse("5"));
         return ServerResponse.ok()
             .contentType(MediaType.APPLICATION_JSON)
-            .body(statisticsService.getHardestTasks(limit), 
-                com.vg.task.domain.dto.TaskDifficultyDTO.class);
+            .body(statisticsService.getHardestTasks(limit), TaskDifficultyDTO.class);
     }
 
     public Mono<ServerResponse> getTeacherStats(ServerRequest request) {
         Integer teacherId = Integer.parseInt(request.pathVariable("teacherId"));
         return ServerResponse.ok()
             .contentType(MediaType.APPLICATION_JSON)
-            .body(statisticsService.getTeacherStats(teacherId), 
-                com.vg.task.domain.dto.TeacherStatsDTO.class);
+            .body(statisticsService.getTeacherStats(teacherId), TeacherStatsDTO.class);
     }
 
     public Mono<ServerResponse> getStudentSummary(ServerRequest request) {
         Integer studentId = Integer.parseInt(request.pathVariable("studentId"));
         return ServerResponse.ok()
             .contentType(MediaType.APPLICATION_JSON)
-            .body(statisticsService.getStudentSummary(studentId), 
-                com.vg.task.domain.dto.StudentSummaryDTO.class);
+            .body(statisticsService.getStudentSummary(studentId), StudentSummaryDTO.class);
     }
 
     public Mono<ServerResponse> getPendingGrading(ServerRequest request) {
         return ServerResponse.ok()
             .contentType(MediaType.APPLICATION_JSON)
-            .body(statisticsService.getPendingGradingTasks(), 
-                com.vg.task.domain.model.Task.class);
+            .body(statisticsService.getPendingGradingTasks(), Task.class);
     }
 
     public Mono<ServerResponse> exportTranscript(ServerRequest request) {

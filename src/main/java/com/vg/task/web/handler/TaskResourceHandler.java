@@ -2,7 +2,7 @@ package com.vg.task.web.handler;
 
 import com.vg.task.domain.model.TaskResource;
 import com.vg.task.repository.TaskResourceRepository;
-import com.vg.task.service.CloudinaryUploadService;
+import com.vg.task.service.impl.CloudinaryUploadService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.codec.multipart.FilePart;
 import org.springframework.stereotype.Component;

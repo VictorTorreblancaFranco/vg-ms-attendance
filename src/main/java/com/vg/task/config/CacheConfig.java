@@ -15,6 +15,7 @@ public class CacheConfig {
     @Bean
     public CacheManager cacheManager() {
         CaffeineCacheManager cacheManager = new CaffeineCacheManager("classes", "students");
+        cacheManager.setAsyncCacheMode(true);  // ← Habilitar modo asíncrono
         cacheManager.setCaffeine(Caffeine.newBuilder()
             .expireAfterWrite(1, TimeUnit.HOURS)
             .maximumSize(100)

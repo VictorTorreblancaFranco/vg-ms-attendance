@@ -2,7 +2,7 @@ package com.vg.task.web.handler;
 
 import com.vg.task.domain.dto.RubricCriteriaRequestDTO;
 import com.vg.task.domain.dto.RubricCriteriaResponseDTO;
-import com.vg.task.service.RubricCriteriaService;
+import com.vg.task.service.impl.RubricCriteriaServiceImpl;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -15,7 +15,7 @@ import reactor.core.publisher.Mono;
 @RequiredArgsConstructor
 public class RubricCriteriaHandler {
 
-    private final RubricCriteriaService rubricCriteriaService;
+    private final RubricCriteriaServiceImpl rubricCriteriaService;
 
     public Mono<ServerResponse> create(ServerRequest request) {
         return request.bodyToMono(RubricCriteriaRequestDTO.class)

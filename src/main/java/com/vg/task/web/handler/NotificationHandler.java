@@ -1,7 +1,7 @@
 package com.vg.task.web.handler;
 
 import com.vg.task.domain.model.Notification;
-import com.vg.task.service.NotificationService;
+import com.vg.task.service.impl.NotificationServiceImpl;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
@@ -13,7 +13,7 @@ import reactor.core.publisher.Mono;
 @RequiredArgsConstructor
 public class NotificationHandler {
 
-    private final NotificationService notificationService;
+    private final NotificationServiceImpl notificationService;
 
     public Mono<ServerResponse> getByUser(ServerRequest request) {
         Integer userId = Integer.parseInt(request.pathVariable("userId"));

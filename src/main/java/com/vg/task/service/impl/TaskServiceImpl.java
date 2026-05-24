@@ -1,6 +1,6 @@
 package com.vg.task.service.impl;
 
-import com.vg.task.application.port.input.TaskUseCase;
+import com.vg.task.service.port.TaskUseCase;
 import com.vg.task.client.ResilientAcademicClient;
 import com.vg.task.domain.model.Task;
 import com.vg.task.domain.dto.TaskFilterDTO;

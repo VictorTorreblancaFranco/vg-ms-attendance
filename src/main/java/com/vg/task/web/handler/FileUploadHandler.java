@@ -1,7 +1,7 @@
 package com.vg.task.web.handler;
 
-import com.vg.task.service.CloudinaryUploadService;
-import com.vg.task.service.RateLimitService;
+import com.vg.task.service.impl.CloudinaryUploadService;
+import com.vg.task.service.impl.RateLimitService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;

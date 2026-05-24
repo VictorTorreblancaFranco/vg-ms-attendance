@@ -1,8 +1,8 @@
 package com.vg.task.service.impl;
 
-import com.vg.task.application.port.input.SubmissionUseCase;
-import com.vg.task.application.port.output.SubmissionRepositoryPort;
-import com.vg.task.application.port.output.StudentServicePort;
+import com.vg.task.service.port.SubmissionUseCase;
+import com.vg.task.service.port.SubmissionRepositoryPort;
+import com.vg.task.service.port.StudentServicePort;
 import com.vg.task.domain.model.Submission;
 import com.vg.task.domain.model.Task;
 import com.vg.task.domain.dto.GradeRequestDTO;
@@ -13,7 +13,7 @@ import com.vg.task.exception.BadRequestException;
 import com.vg.task.exception.NotFoundException;
 import com.vg.task.repository.SubmissionGradeLogRepository;
 import com.vg.task.repository.TaskRepository;
-import com.vg.task.service.ExcelProcessingService;
+import com.vg.task.service.impl.ExcelProcessingService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;

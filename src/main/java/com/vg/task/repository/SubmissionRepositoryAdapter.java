@@ -1,6 +1,6 @@
 package com.vg.task.repository;
 
-import com.vg.task.application.port.output.SubmissionRepositoryPort;
+import com.vg.task.service.port.SubmissionRepositoryPort;
 import com.vg.task.domain.model.Submission;
 import com.vg.task.mapper.SubmissionMapper;
 import lombok.RequiredArgsConstructor;

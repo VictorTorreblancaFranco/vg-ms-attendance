@@ -1,7 +1,7 @@
 package com.vg.task.web.handler;
 
 import com.vg.task.domain.dto.DashboardStatsDTO;
-import com.vg.task.service.DashboardService;
+import com.vg.task.service.impl.DashboardServiceImpl;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
@@ -13,7 +13,7 @@ import reactor.core.publisher.Mono;
 @RequiredArgsConstructor
 public class DashboardHandler {
 
-    private final DashboardService dashboardService;
+    private final DashboardServiceImpl dashboardService;
 
     public Mono<ServerResponse> getDashboardStats(ServerRequest request) {
         return ServerResponse.ok()

@@ -1,6 +1,6 @@
 package com.vg.task.client;
 
-import com.vg.task.application.port.output.AcademicServicePort;
+import com.vg.task.service.port.AcademicServicePort;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
