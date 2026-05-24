@@ -2,7 +2,7 @@ package com.vg.task.service.impl;
 
 import com.vg.task.domain.dto.EducationalResourceDTO;
 import com.vg.task.domain.model.EducationalResource;
-import com.vg.task.exception.NotFoundException;
+import com.vg.task.domain.model.exceptions.NotFoundException;
 import com.vg.task.repository.EducationalResourceRepository;
 import com.vg.task.service.EducationalResourceService;
 import lombok.RequiredArgsConstructor;

@@ -2,7 +2,7 @@ package com.vg.task.service.impl;
 
 import com.vg.task.domain.dto.CurriculumPlanDTO;
 import com.vg.task.domain.model.CurriculumPlan;
-import com.vg.task.exception.NotFoundException;
+import com.vg.task.domain.model.exceptions.NotFoundException;
 import com.vg.task.repository.CurriculumPlanRepository;
 import com.vg.task.service.CurriculumPlanService;
 import lombok.RequiredArgsConstructor;

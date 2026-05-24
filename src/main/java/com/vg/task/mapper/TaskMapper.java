@@ -4,18 +4,14 @@ import com.vg.task.domain.dto.TaskRequestDTO;
 import com.vg.task.domain.dto.TaskResponseDTO;
 import com.vg.task.domain.model.Task;
 import org.springframework.stereotype.Component;
-
 import java.time.OffsetDateTime;
-import java.util.Collections;
 
 @Component
 public class TaskMapper {
     
     public Task toDomain(TaskRequestDTO dto) {
         if (dto == null) return null;
-        
         OffsetDateTime now = OffsetDateTime.now();
-        
         return Task.builder()
                 .title(dto.title())
                 .description(dto.description())
@@ -36,24 +32,12 @@ public class TaskMapper {
     
     public TaskResponseDTO toResponse(Task task) {
         if (task == null) return null;
-        
         return new TaskResponseDTO(
-                task.getId(),
-                task.getTitle(),
-                task.getDescription(),
-                task.getInstructions(),
-                task.getClassId(),
-                task.getCriterionId(),
-                task.getPointsValue(),
-                task.getDueDate(),
-                task.getScheduledPublishDate(),
-                task.getScheduledCloseDate(),
-                task.getStatus(),
-                task.getIsDeleted(),
-                task.getCreatedBy(),
-                task.getCreatedAt(),
-                task.getUpdatedAt(),
-                task.getDeletedAt()
+                task.getId(), task.getTitle(), task.getDescription(), task.getInstructions(),
+                task.getClassId(), task.getCriterionId(), task.getPointsValue(),
+                task.getDueDate(), task.getScheduledPublishDate(), task.getScheduledCloseDate(),
+                task.getStatus(), task.getIsDeleted(), task.getCreatedBy(),
+                task.getCreatedAt(), task.getUpdatedAt(), task.getDeletedAt()
         );
     }
 }

@@ -1,7 +1,7 @@
 package com.vg.task.service.impl;
 
 import com.vg.task.domain.dto.excel.ExcelGradeRowDTO;
-import com.vg.task.exception.BadRequestException;
+import com.vg.task.domain.model.exceptions.BadRequestException;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.poi.ss.usermodel.*;
 import org.springframework.stereotype.Service;

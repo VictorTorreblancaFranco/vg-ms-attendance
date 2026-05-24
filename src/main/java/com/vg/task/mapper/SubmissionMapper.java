@@ -6,7 +6,6 @@ import com.vg.task.domain.model.Submission;
 import org.springframework.stereotype.Component;
 
 import java.time.OffsetDateTime;
-import java.util.Collections;
 
 @Component
 public class SubmissionMapper {

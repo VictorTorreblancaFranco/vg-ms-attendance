@@ -19,53 +19,45 @@ public class SubmissionRepositoryAdapter implements SubmissionRepositoryPort {
     
     @Override
     public Flux<Submission> findAll() {
-        return submissionRepository.findAll()
-                .map(mapper::toDomain);
+        return submissionRepository.findAll().map(mapper::toDomain);
     }
     
     @Override
     public Mono<Submission> findById(Long id) {
-        return submissionRepository.findById(id)
-                .map(mapper::toDomain);
+        return submissionRepository.findById(id).map(mapper::toDomain);
     }
     
     @Override
     public Flux<Submission> findByTaskId(Long taskId) {
-        return submissionRepository.findByTaskId(taskId)
-                .map(mapper::toDomain);
+        return submissionRepository.findByTaskId(taskId).map(mapper::toDomain);
     }
     
     @Override
     public Flux<Submission> findByTaskId(Long taskId, int page, int size) {
         Pageable pageable = PageRequest.of(page, size);
-        return submissionRepository.findByTaskId(taskId, pageable)
-                .map(mapper::toDomain);
+        return submissionRepository.findByTaskId(taskId, pageable).map(mapper::toDomain);
     }
     
     @Override
     public Flux<Submission> findByStudentId(Integer studentId) {
-        return submissionRepository.findByStudentId(studentId)
-                .map(mapper::toDomain);
+        return submissionRepository.findByStudentId(studentId).map(mapper::toDomain);
     }
     
     @Override
     public Flux<Submission> findByStudentId(Integer studentId, int page, int size) {
         Pageable pageable = PageRequest.of(page, size);
-        return submissionRepository.findByStudentId(studentId, pageable)
-                .map(mapper::toDomain);
+        return submissionRepository.findByStudentId(studentId, pageable).map(mapper::toDomain);
     }
     
     @Override
     public Mono<Submission> findByTaskIdAndStudentId(Long taskId, Integer studentId) {
-        return submissionRepository.findByTaskIdAndStudentId(taskId, studentId)
-                .map(mapper::toDomain);
+        return submissionRepository.findByTaskIdAndStudentId(taskId, studentId).map(mapper::toDomain);
     }
     
     @Override
     public Mono<Submission> save(Submission submission) {
         com.vg.task.domain.model.Submission entity = mapper.toEntity(submission);
-        return submissionRepository.save(entity)
-                .map(mapper::toDomain);
+        return submissionRepository.save(entity).map(mapper::toDomain);
     }
     
     @Override

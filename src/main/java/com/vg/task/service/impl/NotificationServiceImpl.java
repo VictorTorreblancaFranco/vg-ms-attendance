@@ -1,7 +1,7 @@
 package com.vg.task.service.impl;
 
 import com.vg.task.domain.model.Notification;
-import com.vg.task.exception.NotFoundException;
+import com.vg.task.domain.model.exceptions.NotFoundException;
 import com.vg.task.repository.NotificationRepository;
 import com.vg.task.service.NotificationService;
 import lombok.RequiredArgsConstructor;
