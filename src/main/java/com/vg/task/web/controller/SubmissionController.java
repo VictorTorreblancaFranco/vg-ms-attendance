@@ -2,6 +2,7 @@ package com.vg.task.web.controller;
 
 import com.vg.task.domain.dto.*;
 import com.vg.task.service.impl.SubmissionServiceImpl;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
@@ -60,12 +61,12 @@ public class SubmissionController {
 
     @PostMapping("/submit")
     @ResponseStatus(HttpStatus.CREATED)
-    public Mono<SubmissionResponseDTO> submit(@RequestBody SubmissionRequestDTO request) {
+    public Mono<SubmissionResponseDTO> submit(@Valid @RequestBody SubmissionRequestDTO request) {
         return submissionService.submit(request);
     }
 
     @PutMapping("/{id}/grade")
-    public Mono<SubmissionResponseDTO> grade(@PathVariable Long id, @RequestBody GradeRequestDTO request) {
+    public Mono<SubmissionResponseDTO> grade(@PathVariable Long id, @Valid @RequestBody GradeRequestDTO request) {
         return submissionService.grade(id, request);
     }
 

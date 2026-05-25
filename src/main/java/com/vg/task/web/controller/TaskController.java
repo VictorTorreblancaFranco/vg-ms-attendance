@@ -1,13 +1,9 @@
 package com.vg.task.web.controller;
 
-import com.vg.task.domain.dto.TaskFilterDTO;
-import com.vg.task.domain.dto.TaskRequestDTO;
-import com.vg.task.domain.dto.TaskResponseDTO;
-import com.vg.task.domain.dto.UpdateTaskRequestDTO;
-import com.vg.task.domain.dto.PageResponseDTO;
-import com.vg.task.domain.model.Task;
+import com.vg.task.domain.dto.*;
 import com.vg.task.mapper.TaskMapper;
 import com.vg.task.service.port.TaskUseCase;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
@@ -76,13 +72,12 @@ public class TaskController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public Mono<TaskResponseDTO> save(@RequestBody TaskRequestDTO request) {
-        Task task = taskMapper.toDomain(request);
-        return taskUseCase.save(task).map(taskMapper::toResponse);
+    public Mono<TaskResponseDTO> save(@Valid @RequestBody TaskRequestDTO request) {
+        return taskUseCase.save(taskMapper.toDomain(request)).map(taskMapper::toResponse);
     }
 
     @PutMapping
-    public Mono<TaskResponseDTO> update(@RequestBody UpdateTaskRequestDTO request) {
+    public Mono<TaskResponseDTO> update(@Valid @RequestBody UpdateTaskRequestDTO request) {
         return taskUseCase.findById(request.id())
                 .flatMap(existing -> {
                     if (request.title() != null) existing.setTitle(request.title());

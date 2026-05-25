@@ -3,9 +3,9 @@ package com.vg.task.web.controller;
 import com.vg.task.domain.dto.AttendanceDTO;
 import com.vg.task.domain.dto.PageResponseDTO;
 import com.vg.task.service.impl.AttendanceServiceImpl;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -51,12 +51,12 @@ public class AttendanceController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public Mono<AttendanceDTO> save(@RequestBody AttendanceDTO dto) {
+    public Mono<AttendanceDTO> save(@Valid @RequestBody AttendanceDTO dto) {
         return attendanceService.save(dto);
     }
 
     @PutMapping("/{id}")
-    public Mono<AttendanceDTO> update(@PathVariable Long id, @RequestBody AttendanceDTO dto) {
+    public Mono<AttendanceDTO> update(@PathVariable Long id, @Valid @RequestBody AttendanceDTO dto) {
         return attendanceService.update(id, dto);
     }
 
