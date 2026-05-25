@@ -3,6 +3,7 @@ package com.vg.task.service.impl;
 import com.vg.task.client.StudentClient;
 import com.vg.task.domain.dto.AttendanceDTO;
 import com.vg.task.domain.dto.AttendanceBulkDTO;
+import com.vg.task.domain.dto.PageResponseDTO;
 import com.vg.task.domain.model.Attendance;
 import com.vg.task.domain.model.exceptions.BadRequestException;
 import com.vg.task.domain.model.exceptions.NotFoundException;
@@ -37,6 +38,24 @@ public class AttendanceServiceImpl implements AttendanceService {
                 .flatMap(this::enrichWithStudentInfo);
     }
 
+    public Mono<PageResponseDTO<AttendanceDTO>> findByClassIdPaged(Integer classId, int page, int size) {
+        return attendanceRepository.findByClassId(classId)
+                .collectList()
+                .flatMap(list -> {
+                    int total = list.size();
+                    int start = page * size;
+                    int end = Math.min(start + size, total);
+                    if (start >= total) {
+                        return Mono.just(PageResponseDTO.of(new ArrayList<>(), page, size, total));
+                    }
+                    List<Attendance> paged = list.subList(start, end);
+                    return Flux.fromIterable(paged)
+                            .flatMap(this::enrichWithStudentInfo)
+                            .collectList()
+                            .map(dtos -> PageResponseDTO.of(dtos, page, size, total));
+                });
+    }
+
     @Override
     public Flux<AttendanceDTO> findByClassIdAndDate(Integer classId, LocalDate date) {
         return attendanceRepository.findByClassIdAndDate(classId, date)
@@ -47,6 +66,24 @@ public class AttendanceServiceImpl implements AttendanceService {
     public Flux<AttendanceDTO> findByStudentId(Integer studentId) {
         return attendanceRepository.findByStudentId(studentId)
                 .flatMap(this::enrichWithStudentInfo);
+    }
+
+    public Mono<PageResponseDTO<AttendanceDTO>> findByStudentIdPaged(Integer studentId, int page, int size) {
+        return attendanceRepository.findByStudentId(studentId)
+                .collectList()
+                .flatMap(list -> {
+                    int total = list.size();
+                    int start = page * size;
+                    int end = Math.min(start + size, total);
+                    if (start >= total) {
+                        return Mono.just(PageResponseDTO.of(new ArrayList<>(), page, size, total));
+                    }
+                    List<Attendance> paged = list.subList(start, end);
+                    return Flux.fromIterable(paged)
+                            .flatMap(this::enrichWithStudentInfo)
+                            .collectList()
+                            .map(dtos -> PageResponseDTO.of(dtos, page, size, total));
+                });
     }
 
     @Override

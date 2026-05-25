@@ -1,6 +1,7 @@
 package com.vg.task.service.impl;
 
 import com.vg.task.service.SubmissionService;
+import com.vg.task.service.port.SubmissionUseCase;
 import com.vg.task.service.port.SubmissionRepositoryPort;
 import com.vg.task.service.port.StudentServicePort;
 import com.vg.task.domain.model.Submission;
@@ -9,6 +10,8 @@ import com.vg.task.domain.dto.GradeRequestDTO;
 import com.vg.task.domain.dto.RubricGradeRequestDTO;
 import com.vg.task.domain.dto.SubmissionRequestDTO;
 import com.vg.task.domain.dto.SubmissionResponseDTO;
+import com.vg.task.domain.dto.PageResponseDTO;
+import com.vg.task.domain.dto.excel.ExcelGradeRowDTO;
 import com.vg.task.domain.model.exceptions.BadRequestException;
 import com.vg.task.domain.model.exceptions.NotFoundException;
 import com.vg.task.mapper.SubmissionMapper;
@@ -19,11 +22,16 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.time.OffsetDateTime;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
 @Slf4j
 @Service
@@ -44,14 +52,58 @@ public class SubmissionServiceImpl implements SubmissionService {
         return submissionRepository.findAll().map(mapper::toResponse);
     }
     
+    public Mono<PageResponseDTO<SubmissionResponseDTO>> findAllPaged(int page, int size) {
+        return submissionRepository.findAll()
+                .collectList()
+                .flatMap(list -> {
+                    int total = list.size();
+                    int start = page * size;
+                    int end = Math.min(start + size, total);
+                    if (start >= total) {
+                        return Mono.just(PageResponseDTO.of(new ArrayList<>(), page, size, total));
+                    }
+                    List<SubmissionResponseDTO> paged = list.subList(start, end).stream()
+                            .map(mapper::toResponse).toList();
+                    return Mono.just(PageResponseDTO.of(paged, page, size, total));
+                });
+    }
+    
     @Override
     public Flux<SubmissionResponseDTO> findByTaskId(Long taskId) {
         return submissionRepository.findByTaskId(taskId).map(mapper::toResponse);
     }
     
+    public Mono<PageResponseDTO<SubmissionResponseDTO>> findByTaskIdPaged(Long taskId, int page, int size) {
+        return submissionRepository.countByTaskId(taskId)
+            .flatMap(total -> {
+                if (total == 0) {
+                    return Mono.just(PageResponseDTO.of(new ArrayList<>(), page, size, total));
+                }
+                return submissionRepository.findByTaskId(taskId, page, size)
+                    .collectList()
+                    .map(submissions -> PageResponseDTO.of(
+                            submissions.stream().map(mapper::toResponse).toList(),
+                            page, size, total));
+            });
+    }
+    
     @Override
     public Flux<SubmissionResponseDTO> findByStudentId(Integer studentId) {
         return submissionRepository.findByStudentId(studentId).map(mapper::toResponse);
+    }
+    
+    public Mono<PageResponseDTO<SubmissionResponseDTO>> findByStudentIdPaged(Integer studentId, int page, int size) {
+        return submissionRepository.countByStudentId(studentId)
+            .flatMap(total -> {
+                if (total == 0) {
+                    return Mono.just(PageResponseDTO.of(new ArrayList<>(), page, size, total));
+                }
+                return submissionRepository.findByStudentId(studentId, page, size)
+                    .collectList()
+                    .map(submissions -> PageResponseDTO.of(
+                            submissions.stream().map(mapper::toResponse).toList(),
+                            page, size, total));
+            });
     }
     
     @Override
