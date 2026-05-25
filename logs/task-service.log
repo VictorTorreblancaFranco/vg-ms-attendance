@@ -198,3 +198,5 @@ Caused by: io.r2dbc.postgresql.client.ReactorNettyClient$PostgresConnectionClose
 2026-05-25T00:25:00.517-05:00  INFO 73621 --- [vg-ms-task] [reactor-http-nio-7] com.vg.task.client.AcademicClient        : 🔍 Validando clase 99999 contra academic-service
 2026-05-25T00:25:02.967-05:00 ERROR 73621 --- [vg-ms-task] [reactor-http-nio-7] com.vg.task.client.AcademicClient        : ❌ Error validando clase 99999: 404 Not Found from GET http://localhost:8082/api/clases/99999
 2026-05-25T00:25:02.968-05:00 ERROR 73621 --- [vg-ms-task] [reactor-http-nio-7] c.vg.task.service.impl.TaskServiceImpl   : ❌ Error: La clase 99999 no es válida
+2026-05-25T00:31:11.614-05:00  INFO 73621 --- [vg-ms-task] [SpringApplicationShutdownHook] o.s.b.w.embedded.netty.GracefulShutdown  : Commencing graceful shutdown. Waiting for active requests to complete
+2026-05-25T00:31:11.619-05:00  INFO 73621 --- [vg-ms-task] [netty-shutdown] o.s.b.w.embedded.netty.GracefulShutdown  : Graceful shutdown complete
