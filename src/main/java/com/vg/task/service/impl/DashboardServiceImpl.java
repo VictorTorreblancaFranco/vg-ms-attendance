@@ -9,6 +9,7 @@ import com.vg.task.repository.TaskRepository;
 import com.vg.task.service.DashboardService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 
@@ -29,7 +30,9 @@ public class DashboardServiceImpl implements DashboardService {
     private final StudentClient studentClient;
 
     @Override
+    @Cacheable(value = "dashboard", key = "'global'", unless = "#result == null")
     public Mono<DashboardStatsDTO> getDashboardStats() {
+        log.info("📊 Cargando dashboard stats (desde DB)");
         OffsetDateTime thirtyDaysAgo = OffsetDateTime.now().minusDays(30);
         
         return Mono.zip(
@@ -42,19 +45,15 @@ public class DashboardServiceImpl implements DashboardService {
             getDailySubmissions(thirtyDaysAgo),
             getGradeDistribution()
         ).map(tuple -> new DashboardStatsDTO(
-            tuple.getT1(),    // totalTasks
-            tuple.getT2(),    // totalSubmissions
-            tuple.getT3(),    // totalStudentsSubmitted
-            tuple.getT4(),    // averageGrade
-            tuple.getT5(),    // tasksByStatus
-            tuple.getT6(),    // submissionsByStatus
-            tuple.getT7(),    // dailySubmissions
-            tuple.getT8()     // gradeDistribution
+            tuple.getT1(), tuple.getT2(), tuple.getT3(), tuple.getT4(),
+            tuple.getT5(), tuple.getT6(), tuple.getT7(), tuple.getT8()
         ));
     }
 
     @Override
+    @Cacheable(value = "dashboard", key = "'task_' + #taskId", unless = "#result == null")
     public Mono<DashboardStatsDTO> getTaskStats(Long taskId) {
+        log.info("📊 Cargando dashboard stats para tarea {} (desde DB)", taskId);
         return submissionRepository.findByTaskId(taskId)
             .collectList()
             .map(submissions -> {
@@ -73,14 +72,9 @@ public class DashboardServiceImpl implements DashboardService {
                 GradeDistributionDTO gradeDist = getDistributionFromSubmissions(submissions);
                 
                 return new DashboardStatsDTO(
-                    1L,                           // totalTasks
-                    (long) submissions.size(),    // totalSubmissions
-                    (long) submissions.stream().map(s -> s.getStudentId()).distinct().count(), // totalStudentsSubmitted
-                    avg,                          // averageGrade
-                    null,                         // tasksByStatus
-                    byStatus,                     // submissionsByStatus
-                    null,                         // dailySubmissions
-                    gradeDist                     // gradeDistribution
+                    1L, (long) submissions.size(),
+                    (long) submissions.stream().map(s -> s.getStudentId()).distinct().count(),
+                    avg, null, byStatus, null, gradeDist
                 );
             });
     }
@@ -174,19 +168,5 @@ public class DashboardServiceImpl implements DashboardService {
         long c11_15 = submissions.stream().filter(s -> s.getGrade() != null && s.getGrade() >= 11 && s.getGrade() <= 15).count();
         long c16_20 = submissions.stream().filter(s -> s.getGrade() != null && s.getGrade() >= 16 && s.getGrade() <= 20).count();
         return new GradeDistributionDTO(c0_5, c6_10, c11_15, c16_20);
-    }
-
-    public Mono<Map<String, Long>> getGradeDistributionForDashboard() {
-        return submissionRepository.findAll()
-            .filter(s -> s.getGrade() != null)
-            .collectList()
-            .map(submissions -> {
-                Map<String, Long> distribution = new HashMap<>();
-                distribution.put("0-5", submissions.stream().filter(s -> s.getGrade() <= 5).count());
-                distribution.put("6-10", submissions.stream().filter(s -> s.getGrade() > 5 && s.getGrade() <= 10).count());
-                distribution.put("11-15", submissions.stream().filter(s -> s.getGrade() > 10 && s.getGrade() <= 15).count());
-                distribution.put("16-20", submissions.stream().filter(s -> s.getGrade() > 15 && s.getGrade() <= 20).count());
-                return distribution;
-            });
     }
 }

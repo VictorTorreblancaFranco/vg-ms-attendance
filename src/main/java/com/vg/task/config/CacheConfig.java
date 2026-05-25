@@ -14,10 +14,10 @@ public class CacheConfig {
 
     @Bean
     public CacheManager cacheManager() {
-        CaffeineCacheManager cacheManager = new CaffeineCacheManager("classes", "students");
-        cacheManager.setAsyncCacheMode(true);  // ← Habilitar modo asíncrono
+        CaffeineCacheManager cacheManager = new CaffeineCacheManager("classes", "students", "dashboard");
+        cacheManager.setAsyncCacheMode(true);
         cacheManager.setCaffeine(Caffeine.newBuilder()
-            .expireAfterWrite(1, TimeUnit.HOURS)
+            .expireAfterWrite(5, TimeUnit.MINUTES)  // Dashboard se actualiza cada 5 minutos
             .maximumSize(100)
             .recordStats());
         return cacheManager;
