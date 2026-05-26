@@ -9,6 +9,8 @@ import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+import java.util.stream.Collectors;
+
 @Slf4j
 @Component
 @RequiredArgsConstructor
@@ -52,19 +54,30 @@ public class AcademicClient {
     public Flux<MateriaConClaseDTO> getMateriasConClaseByGrado(Integer gradoId) {
         log.info("Obteniendo materias SOLO para grado: {}", gradoId);
         return academicWebClient.get()
-                .uri("/api/clases?gradoId={gradoId}", gradoId)
+                .uri("/api/clases", gradoId)  // Sin query param
                 .retrieve()
                 .bodyToFlux(ClassInfo.class)
-                .filter(clase -> clase.gradoId().equals(gradoId))
-                .map(clase -> new MateriaConClaseDTO(
-                    clase.materiaId(),
-                    "Materia " + clase.materiaId(),
-                    clase.id(),
-                    clase.gradoId(),
-                    "Grado " + clase.gradoId(),
-                    clase.activa()
-                ))
-                .doOnNext(m -> log.info("Materia encontrada para grado {}: {}", gradoId, m))
+                .filter(clase -> clase.gradoId().equals(gradoId))  // Filtro manual
+                .collectList()
+                .map(list -> list.stream()
+                    .collect(Collectors.toMap(
+                        ClassInfo::materiaId,
+                        clase -> new MateriaConClaseDTO(
+                            clase.materiaId(),
+                            "Materia " + clase.materiaId(),
+                            clase.id(),
+                            clase.gradoId(),
+                            "Grado " + clase.gradoId(),
+                            clase.activa()
+                        ),
+                        (existing, replacement) -> existing
+                    ))
+                    .values()
+                    .stream()
+                    .collect(Collectors.toList())
+                )
+                .flatMapMany(Flux::fromIterable)
+                .doOnNext(m -> log.info("Materia encontrada: {}", m))
                 .onErrorResume(e -> {
                     log.error("Error obteniendo materias para grado {}: {}", gradoId, e.getMessage());
                     return Flux.empty();

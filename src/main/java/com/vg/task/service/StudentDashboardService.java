@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 
 import java.util.Collections;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -43,11 +44,22 @@ public class StudentDashboardService {
                             ));
                         }
                         
-                        var classIds = materias.stream()
+                        // Eliminar duplicados por materiaId
+                        var materiasUnicas = materias.stream()
+                            .collect(Collectors.toMap(
+                                AcademicClient.MateriaConClaseDTO::materiaId,
+                                m -> m,
+                                (existing, replacement) -> existing
+                            ))
+                            .values()
+                            .stream()
+                            .collect(Collectors.toList());
+                        
+                        var classIds = materiasUnicas.stream()
                             .map(AcademicClient.MateriaConClaseDTO::claseId)
                             .collect(Collectors.toList());
                         
-                        log.info("Materias encontradas para grado {}: {}", gradoId, materias.size());
+                        log.info("Materias unicas para grado {}: {}", gradoId, materiasUnicas.size());
                         
                         return taskRepository.findByClassIdInAndStatusAndIsDeletedFalse(classIds, "published")
                             .collectList()
@@ -59,19 +71,39 @@ public class StudentDashboardService {
                                 var tasks = tuple.getT1();
                                 var submissions = tuple.getT2();
                                 
-                                var materiasDTO = materias.stream().map(materia -> {
-                                    var tareasDTO = tasks.stream()
+                                // Eliminar tareas duplicadas por taskId
+                                var tasksUnicas = tasks.stream()
+                                    .collect(Collectors.toMap(
+                                        t -> t.getId(),
+                                        t -> t,
+                                        (existing, replacement) -> existing
+                                    ))
+                                    .values()
+                                    .stream()
+                                    .collect(Collectors.toList());
+                                
+                                var materiasDTO = materiasUnicas.stream().map(materia -> {
+                                    var tareasDTO = tasksUnicas.stream()
                                         .filter(t -> t.getClassId().equals(materia.claseId()))
                                         .map(tarea -> {
                                             var sub = submissions.get(tarea.getId());
+                                            boolean entregada = sub != null && Boolean.TRUE.equals(sub.getPresented());
+                                            String estado = "pendiente";
+                                            if (sub != null) {
+                                                if (sub.getGrade() != null) {
+                                                    estado = "calificado";
+                                                } else if (Boolean.TRUE.equals(sub.getPresented())) {
+                                                    estado = "entregado";
+                                                }
+                                            }
                                             return new StudentDashboardDTO.TareaDTO(
                                                 tarea.getId(),
                                                 tarea.getTitle(),
                                                 tarea.getDescription(),
                                                 tarea.getDueDate(),
-                                                sub != null,
+                                                entregada,
                                                 sub != null ? sub.getGrade() : null,
-                                                sub != null ? sub.getStatus() : "pendiente"
+                                                estado
                                             );
                                         }).collect(Collectors.toList());
                                     
