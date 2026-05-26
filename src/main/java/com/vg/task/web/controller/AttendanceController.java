@@ -1,5 +1,6 @@
 package com.vg.task.web.controller;
 
+import com.vg.task.domain.dto.AttendanceBulkDTO;
 import com.vg.task.domain.dto.AttendanceDTO;
 import com.vg.task.domain.dto.PageResponseDTO;
 import com.vg.task.service.impl.AttendanceServiceImpl;
@@ -10,6 +11,7 @@ import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import java.time.LocalDate;
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1/attendance")
@@ -53,6 +55,13 @@ public class AttendanceController {
     @ResponseStatus(HttpStatus.CREATED)
     public Mono<AttendanceDTO> save(@Valid @RequestBody AttendanceDTO dto) {
         return attendanceService.save(dto);
+    }
+
+    // NUEVO ENDPOINT BULK
+    @PostMapping("/bulk")
+    @ResponseStatus(HttpStatus.CREATED)
+    public Mono<List<AttendanceDTO>> saveBulk(@Valid @RequestBody AttendanceBulkDTO bulkDTO) {
+        return attendanceService.saveBulk(bulkDTO);
     }
 
     @PutMapping("/{id}")

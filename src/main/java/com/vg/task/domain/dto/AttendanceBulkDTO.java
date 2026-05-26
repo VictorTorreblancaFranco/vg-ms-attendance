@@ -1,19 +1,28 @@
 package com.vg.task.domain.dto;
 
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotNull;
 import java.time.LocalDate;
+import java.util.List;
 
-@Data
-@Builder
-@NoArgsConstructor
-@AllArgsConstructor
-public class AttendanceBulkDTO {
-    private Integer studentId;
-    private Integer classId;
-    private LocalDate date;
-    private String status;  // A, F, J
-    private String observation;
+public record AttendanceBulkDTO(
+    @NotNull(message = "Class ID is required") 
+    Integer classId,
+    
+    @NotNull(message = "Date is required") 
+    LocalDate date,
+    
+    @NotNull(message = "Attendances list is required") 
+    @Valid
+    List<BulkAttendanceItem> attendances
+) {
+    public record BulkAttendanceItem(
+        @NotNull(message = "Student ID is required") 
+        Integer studentId,
+        
+        @NotNull(message = "Status is required") 
+        String status,  // A, F, J
+        
+        String observation
+    ) {}
 }
