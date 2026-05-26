@@ -8,11 +8,14 @@ import org.springframework.stereotype.Repository;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import java.time.OffsetDateTime;
+import java.util.List;
 
 @Repository
 public interface TaskRepository extends ReactiveCrudRepository<Task, Long> {
     Flux<Task> findByStatus(String status);
     Flux<Task> findByClassId(Integer classId);
+    Flux<Task> findByClassIdIn(List<Integer> classIds);
+    Flux<Task> findByClassIdInAndStatusAndIsDeletedFalse(List<Integer> classIds, String status);
     Flux<Task> findByStatusAndClassId(String status, Integer classId);
     Flux<Task> findByCreatedByAndIsDeletedFalse(Integer createdBy);
     Flux<Task> findByCreatedAtBetween(OffsetDateTime from, OffsetDateTime to);
