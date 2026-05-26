@@ -16,9 +16,7 @@ public class StudentClient {
     @Qualifier("studentWebClient")
     private final WebClient studentWebClient;
 
-    // Para AttendanceServiceImpl - valida si existe
     public Mono<Boolean> validateStudent(Integer studentId) {
-        log.info("🔍 Validando estudiante {} contra student-service", studentId);
         return studentWebClient.get()
                 .uri("/api/students/{id}", studentId)
                 .retrieve()
@@ -27,49 +25,63 @@ public class StudentClient {
                 .onErrorReturn(false);
     }
 
-    // Para AttendanceServiceImpl - obtiene información del estudiante
     public Mono<StudentInfo> getStudentInfo(Integer studentId) {
-        log.info("📚 Obteniendo información del estudiante {}", studentId);
         return studentWebClient.get()
                 .uri("/api/students/{id}", studentId)
                 .retrieve()
                 .bodyToMono(StudentResponse.class)
-                .map(this::toStudentInfo)
-                .onErrorResume(e -> {
-                    log.error("Error obteniendo estudiante {}: {}", studentId, e.getMessage());
-                    return Mono.empty();
-                });
+                .flatMap(student -> getPersonInfo(student.personId())
+                        .map(person -> new StudentInfo(student.id(), student.studentCode(),
+                                person != null ? person.getFullName() : student.studentCode(), true, student.gradeId())))
+                .onErrorResume(e -> Mono.empty());
     }
 
-    // Para UserSelectionController - obtiene todos los estudiantes
     public Flux<StudentInfo> getAllStudents() {
-        log.info("📚 Obteniendo todos los estudiantes desde student-service");
         return studentWebClient.get()
                 .uri("/api/students")
                 .retrieve()
                 .bodyToFlux(StudentResponse.class)
-                .map(this::toStudentInfo)
+                .flatMap(student -> getPersonInfo(student.personId())
+                        .map(person -> new StudentInfo(student.id(), student.studentCode(),
+                                person != null ? person.getFullName() : student.studentCode(), true, student.gradeId())))
                 .onErrorResume(e -> {
                     log.error("❌ Error obteniendo estudiantes: {}", e.getMessage());
                     return Flux.empty();
                 });
     }
 
-    private StudentInfo toStudentInfo(StudentResponse response) {
-        return new StudentInfo(
-                response.id(),
-                response.studentCode(),
-                response.studentCode(),
-                response.isActive()
-        );
+    public Flux<StudentInfo> getStudentsByGradeId(Integer gradeId) {
+        return studentWebClient.get()
+                .uri("/api/students?gradeId={gradeId}", gradeId)
+                .retrieve()
+                .bodyToFlux(StudentResponse.class)
+                .flatMap(student -> getPersonInfo(student.personId())
+                        .map(person -> new StudentInfo(student.id(), student.studentCode(),
+                                person != null ? person.getFullName() : student.studentCode(), true, student.gradeId())))
+                .onErrorResume(e -> Flux.empty());
     }
 
-    public record StudentResponse(
-        Integer id,
-        String studentCode,
-        String enrollmentNumber,
-        Boolean isActive
-    ) {}
+    public Mono<Integer> getStudentGradeId(Integer studentId) {
+        return getStudentInfo(studentId).map(StudentInfo::gradeId);
+    }
 
-    public record StudentInfo(Integer id, String studentCode, String nombre, Boolean active) {}
+    private Mono<PersonInfo> getPersonInfo(Long personId) {
+        return studentWebClient.get()
+                .uri("/api/people/{id}", personId)
+                .retrieve()
+                .bodyToMono(PersonInfo.class)
+                .onErrorResume(e -> Mono.empty());
+    }
+
+    public record StudentResponse(Integer id, Long personId, String studentCode, Boolean isActive, Integer gradeId) {}
+    public record PersonInfo(Long id, String firstName, String lastName, String secondLastName) {
+        public String getFullName() {
+            String full = firstName + " " + lastName;
+            if (secondLastName != null && !secondLastName.isBlank()) {
+                full += " " + secondLastName;
+            }
+            return full;
+        }
+    }
+    public record StudentInfo(Integer id, String studentCode, String nombre, Boolean active, Integer gradeId) {}
 }
