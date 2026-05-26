@@ -17,55 +17,46 @@ public class TeacherClient {
     private final WebClient studentWebClient;
 
     public Flux<TeacherInfo> getAllTeachers() {
-        log.info("👨‍🏫 Obteniendo todos los profesores desde student-service");
         return studentWebClient.get()
                 .uri("/api/teachers")
                 .retrieve()
                 .bodyToFlux(TeacherResponse.class)
-                .map(this::toTeacherInfo)
-                .doOnNext(t -> log.info("👨‍🏫 Profesor: {} - {}", t.id(), t.teacherCode()))
-                .onErrorResume(e -> {
-                    log.error("❌ Error obteniendo profesores: {}", e.getMessage());
-                    return Flux.empty();
-                });
+                .flatMap(teacher -> getPersonInfo(teacher.personId())
+                        .map(person -> new TeacherInfo(teacher.id(), teacher.teacherCode(),
+                                person != null ? person.getFullName() : teacher.teacherCode(),
+                                teacher.specialty(), teacher.isActive())))
+                .onErrorResume(e -> Flux.empty());
     }
 
     public Mono<TeacherInfo> getTeacherById(Long id) {
-        log.info("👨‍🏫 Obteniendo profesor por ID: {}", id);
         return studentWebClient.get()
                 .uri("/api/teachers/{id}", id)
                 .retrieve()
                 .bodyToMono(TeacherResponse.class)
-                .map(this::toTeacherInfo)
-                .onErrorResume(e -> {
-                    log.error("❌ Error obteniendo profesor {}: {}", id, e.getMessage());
-                    return Mono.empty();
-                });
+                .flatMap(teacher -> getPersonInfo(teacher.personId())
+                        .map(person -> new TeacherInfo(teacher.id(), teacher.teacherCode(),
+                                person != null ? person.getFullName() : teacher.teacherCode(),
+                                teacher.specialty(), teacher.isActive())))
+                .onErrorResume(e -> Mono.empty());
     }
 
-    private TeacherInfo toTeacherInfo(TeacherResponse response) {
-        return new TeacherInfo(
-                response.id(),
-                response.personId(),
-                response.userId(),
-                response.teacherCode(),
-                response.specialty(),
-                response.professionalTitle(),
-                response.isActive()
-        );
+    private Mono<PersonInfo> getPersonInfo(Long personId) {
+        return studentWebClient.get()
+                .uri("/api/people/{id}", personId)
+                .retrieve()
+                .bodyToMono(PersonInfo.class)
+                .onErrorResume(e -> Mono.empty());
     }
 
-    // Clase para mapear la respuesta del student-service
-    public record TeacherResponse(
-        Long id,
-        Long personId,
-        Long userId,
-        String teacherCode,
-        String specialty,
-        String professionalTitle,
-        Boolean isActive
-    ) {}
-
-    public record TeacherInfo(Long id, Long personId, Long userId, String teacherCode,
-                              String specialty, String professionalTitle, Boolean isActive) {}
+    public record TeacherResponse(Long id, Long personId, String teacherCode, String specialty, Boolean isActive) {}
+    public record PersonInfo(Long id, String firstName, String lastName, String secondLastName) {
+        public String getFullName() {
+            String full = firstName + " " + lastName;
+            if (secondLastName != null && !secondLastName.isBlank()) {
+                full += " " + secondLastName;
+            }
+            return full;
+        }
+    }
+    public record TeacherInfo(Long id, String teacherCode, String nombre, String specialty, Boolean active) {}
 }
