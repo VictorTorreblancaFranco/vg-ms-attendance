@@ -19,6 +19,6 @@ public class StudentServicePortAdapter implements StudentServicePort {
     @Override
     public Mono<StudentInfo> getStudentInfo(Integer studentId) {
         return studentClient.getStudentInfo(studentId)
-                .map(s -> new StudentInfo(s.id(), s.studentCode(), s.nombre(), s.active()));
+                .map(s -> new StudentInfo(s.id(), s.studentCode(), s.nombre(), s.active(), s.gradeId()));
     }
 }

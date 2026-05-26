@@ -1,7 +1,6 @@
 package com.vg.task.service.impl;
 
 import com.vg.task.service.SubmissionService;
-import com.vg.task.service.port.SubmissionUseCase;
 import com.vg.task.service.port.SubmissionRepositoryPort;
 import com.vg.task.service.port.StudentServicePort;
 import com.vg.task.domain.model.Submission;
@@ -17,6 +16,7 @@ import com.vg.task.domain.model.exceptions.NotFoundException;
 import com.vg.task.mapper.SubmissionMapper;
 import com.vg.task.repository.SubmissionGradeLogRepository;
 import com.vg.task.repository.TaskRepository;
+import com.vg.task.client.AcademicClient;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -32,6 +32,7 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -42,6 +43,7 @@ public class SubmissionServiceImpl implements SubmissionService {
     private final StudentServicePort studentService;
     private final SubmissionGradeLogRepository gradeLogRepository;
     private final TaskRepository taskRepository;
+    private final AcademicClient academicClient;
     private final SubmissionMapper mapper;
     
     @Value("${submission.grace-period-days:30}")
@@ -146,6 +148,7 @@ public class SubmissionServiceImpl implements SubmissionService {
                 .flatMap(submission -> 
                     validateTaskGradingPeriod(submission.getTaskId())
                         .then(validateGradeRange(request.grade()))
+                        .then(validateStudentBelongsToTask(submission.getTaskId(), submission.getStudentId()))
                         .then(Mono.defer(() -> {
                             Double oldGrade = submission.getGrade();
                             OffsetDateTime now = OffsetDateTime.now();
@@ -178,6 +181,59 @@ public class SubmissionServiceImpl implements SubmissionService {
                             return submissionRepository.save(submission);
                         }))
                 ).map(mapper::toResponse);
+    }
+    
+    private Mono<Void> validateStudentBelongsToTask(Long taskId, Integer studentId) {
+        return taskRepository.findById(taskId)
+            .switchIfEmpty(Mono.error(new NotFoundException("Task not found: " + taskId)))
+            .flatMap(task -> academicClient.getClassInfo(task.getClassId())
+                .switchIfEmpty(Mono.error(new NotFoundException("Class not found: " + task.getClassId())))
+                .flatMap(classInfo -> {
+                    Integer gradoId = classInfo.gradoId();
+                    return studentService.getStudentInfo(studentId)
+                        .flatMap(studentInfo -> {
+                            if (!studentInfo.gradeId().equals(gradoId)) {
+                                return Mono.error(new BadRequestException(
+                                    "El estudiante no pertenece al grado de esta tarea. " +
+                                    "Grado de la tarea: " + gradoId + ", Grado del estudiante: " + studentInfo.gradeId()
+                                ));
+                            }
+                            return Mono.empty();
+                        });
+                })
+            );
+    }
+    
+    private Mono<Void> validateTaskGradingPeriod(Long taskId) {
+        return taskRepository.findById(taskId)
+            .switchIfEmpty(Mono.error(new NotFoundException("Task not found: " + taskId)))
+            .flatMap(task -> {
+                OffsetDateTime now = OffsetDateTime.now();
+                OffsetDateTime dueDate = task.getDueDate();
+                String taskStatus = task.getStatus();
+                
+                if ("closed".equals(taskStatus) || "archived".equals(taskStatus)) {
+                    return Mono.error(new BadRequestException("No se puede calificar: La tarea está " + taskStatus));
+                }
+                
+                if (now.isAfter(dueDate)) {
+                    long daysLate = ChronoUnit.DAYS.between(dueDate, now);
+                    if (daysLate > gracePeriodDays) {
+                        return Mono.error(new BadRequestException(
+                            String.format("Período de gracia expirado: %d días de retraso", daysLate)
+                        ));
+                    }
+                    log.warn("⚠️ Calificando con {} días de retraso", daysLate);
+                }
+                return Mono.empty();
+            });
+    }
+    
+    private Mono<Void> validateGradeRange(Double grade) {
+        if (grade == null || grade < 0 || grade > 20) {
+            return Mono.error(new BadRequestException("La nota debe estar entre 0 y 20"));
+        }
+        return Mono.empty();
     }
     
     @Override
@@ -224,37 +280,5 @@ public class SubmissionServiceImpl implements SubmissionService {
     @Override
     public Mono<Void> delete(Long id) {
         return submissionRepository.deleteById(id);
-    }
-    
-    private Mono<Void> validateTaskGradingPeriod(Long taskId) {
-        return taskRepository.findById(taskId)
-            .switchIfEmpty(Mono.error(new NotFoundException("Task not found: " + taskId)))
-            .flatMap(task -> {
-                OffsetDateTime now = OffsetDateTime.now();
-                OffsetDateTime dueDate = task.getDueDate();
-                String taskStatus = task.getStatus();
-                
-                if ("closed".equals(taskStatus) || "archived".equals(taskStatus)) {
-                    return Mono.error(new BadRequestException("No se puede calificar: La tarea está " + taskStatus));
-                }
-                
-                if (now.isAfter(dueDate)) {
-                    long daysLate = ChronoUnit.DAYS.between(dueDate, now);
-                    if (daysLate > gracePeriodDays) {
-                        return Mono.error(new BadRequestException(
-                            String.format("Período de gracia expirado: %d días de retraso", daysLate)
-                        ));
-                    }
-                    log.warn("⚠️ Calificando con {} días de retraso", daysLate);
-                }
-                return Mono.empty();
-            });
-    }
-    
-    private Mono<Void> validateGradeRange(Double grade) {
-        if (grade == null || grade < 0 || grade > 20) {
-            return Mono.error(new BadRequestException("La nota debe estar entre 0 y 20"));
-        }
-        return Mono.empty();
     }
 }
