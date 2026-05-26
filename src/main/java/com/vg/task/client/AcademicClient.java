@@ -52,12 +52,12 @@ public class AcademicClient {
     }
 
     public Flux<MateriaConClaseDTO> getMateriasConClaseByGrado(Integer gradoId) {
-        log.info("Obteniendo materias SOLO para grado: {}", gradoId);
+        log.info("Obteniendo materias para grado: {}", gradoId);
         return academicWebClient.get()
-                .uri("/api/clases", gradoId)  // Sin query param
+                .uri("/api/clases", gradoId)
                 .retrieve()
                 .bodyToFlux(ClassInfo.class)
-                .filter(clase -> clase.gradoId().equals(gradoId))  // Filtro manual
+                .filter(clase -> clase.gradoId().equals(gradoId))
                 .collectList()
                 .map(list -> list.stream()
                     .collect(Collectors.toMap(
@@ -77,9 +77,30 @@ public class AcademicClient {
                     .collect(Collectors.toList())
                 )
                 .flatMapMany(Flux::fromIterable)
-                .doOnNext(m -> log.info("Materia encontrada: {}", m))
                 .onErrorResume(e -> {
-                    log.error("Error obteniendo materias para grado {}: {}", gradoId, e.getMessage());
+                    log.error("Error: {}", e.getMessage());
+                    return Flux.empty();
+                });
+    }
+
+    public Flux<MateriaInfo> getAllMaterias() {
+        return academicWebClient.get()
+                .uri("/api/materias")
+                .retrieve()
+                .bodyToFlux(MateriaInfo.class)
+                .onErrorResume(e -> {
+                    log.error("Error obteniendo materias: {}", e.getMessage());
+                    return Flux.empty();
+                });
+    }
+
+    public Flux<GradoInfo> getAllGrados() {
+        return academicWebClient.get()
+                .uri("/api/grados")
+                .retrieve()
+                .bodyToFlux(GradoInfo.class)
+                .onErrorResume(e -> {
+                    log.error("Error obteniendo grados: {}", e.getMessage());
                     return Flux.empty();
                 });
     }
@@ -92,4 +113,8 @@ public class AcademicClient {
     
     public record MateriaConClaseDTO(Integer materiaId, String materiaNombre, Integer claseId, 
                                      Integer gradoId, String gradoNombre, Boolean claseActiva) {}
+    
+    public record MateriaInfo(Integer id, String nombre) {}
+    
+    public record GradoInfo(Integer id, String nombre) {}
 }

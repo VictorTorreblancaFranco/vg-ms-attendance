@@ -1,12 +1,16 @@
 package com.vg.task.service;
 
 import com.vg.task.client.AcademicClient;
+import com.vg.task.client.StudentClient;
 import com.vg.task.domain.dto.TeacherSubjectsDTO;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 
+import java.util.Comparator;
+import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -15,29 +19,65 @@ import java.util.stream.Collectors;
 public class TeacherSubjectsService {
 
     private final AcademicClient academicClient;
+    private final StudentClient studentClient;
+
+    // Mapeo de especialidad a IDs de materias permitidas
+    private static final Map<String, Set<Integer>> ESPECIALIDAD_MATERIAS = Map.of(
+        "Matemáticas", Set.of(1, 4, 6),
+        "Comunicacion", Set.of(2, 5, 7),
+        "Ciencias", Set.of(3, 8, 9, 10, 11, 12)
+    );
 
     public Mono<TeacherSubjectsDTO> getTeacherSubjects(Integer teacherId) {
-        log.info("👨‍🏫 Obteniendo materias del profesor: {}", teacherId);
+        log.info("Obteniendo materias del profesor ID: {}", teacherId);
         
-        return academicClient.getClasesByProfesor(teacherId)
-            .collectList()
-            .map(clases -> {
-                var subjects = clases.stream().map(clase -> 
-                    new TeacherSubjectsDTO.SubjectDTO(
-                        clase.materiaId(),
-                        "Materia " + clase.materiaId(),
-                        clase.gradoId(),
-                        "Grado " + clase.gradoId(),
-                        clase.id()
-                    )
-                ).collect(Collectors.toList());
+        return studentClient.getTeacherById(Long.valueOf(teacherId))
+            .flatMap(teacher -> {
+                String especialidad = teacher.specialty();
+                Set<Integer> materiasPermitidas = ESPECIALIDAD_MATERIAS.getOrDefault(especialidad, Set.of());
+                log.info("Profesor {} especialidad: {}, materias permitidas: {}", teacher.nombre(), especialidad, materiasPermitidas);
                 
-                return new TeacherSubjectsDTO(
-                    teacherId,
-                    "Profesor " + teacherId,
-                    subjects
-                );
+                return academicClient.getClasesByProfesor(teacherId)
+                    .collectList()
+                    .flatMap(clases -> {
+                        if (clases.isEmpty()) {
+                            return Mono.just(new TeacherSubjectsDTO(teacherId, teacher.nombre(), java.util.Collections.emptyList()));
+                        }
+                        
+                        return Mono.zip(
+                            academicClient.getAllMaterias().collectMap(m -> m.id(), m -> m.nombre()),
+                            academicClient.getAllGrados().collectMap(g -> g.id(), g -> g.nombre())
+                        ).map(tuple -> {
+                            var materiasMap = tuple.getT1();
+                            var gradosMap = tuple.getT2();
+                            
+                            var subjects = clases.stream()
+                                .filter(clase -> materiasPermitidas.contains(clase.materiaId()))
+                                .collect(Collectors.toMap(
+                                    clase -> clase.materiaId() + "-" + clase.gradoId(),
+                                    clase -> {
+                                        String materiaNombre = materiasMap.getOrDefault(clase.materiaId(), "Materia " + clase.materiaId());
+                                        String gradoNombre = gradosMap.getOrDefault(clase.gradoId(), "Grado " + clase.gradoId());
+                                        return new TeacherSubjectsDTO.SubjectDTO(
+                                            clase.materiaId(),
+                                            materiaNombre,
+                                            clase.gradoId(),
+                                            gradoNombre,
+                                            clase.id()
+                                        );
+                                    },
+                                    (existing, replacement) -> existing
+                                ))
+                                .values()
+                                .stream()
+                                .sorted(Comparator.comparing(TeacherSubjectsDTO.SubjectDTO::subjectName))
+                                .collect(Collectors.toList());
+                            
+                            log.info("Profesor {} tiene {} materias (filtradas por especialidad)", teacher.nombre(), subjects.size());
+                            return new TeacherSubjectsDTO(teacherId, teacher.nombre(), subjects);
+                        });
+                    });
             })
-            .defaultIfEmpty(new TeacherSubjectsDTO(teacherId, "Profesor " + teacherId, java.util.Collections.emptyList()));
+            .switchIfEmpty(Mono.just(new TeacherSubjectsDTO(teacherId, "Profesor " + teacherId, java.util.Collections.emptyList())));
     }
 }

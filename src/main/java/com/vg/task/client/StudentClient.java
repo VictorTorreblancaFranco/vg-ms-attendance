@@ -36,6 +36,18 @@ public class StudentClient {
                 .onErrorResume(e -> Mono.empty());
     }
 
+    public Mono<TeacherInfo> getTeacherById(Long teacherId) {
+        return studentWebClient.get()
+                .uri("/api/teachers/{id}", teacherId)
+                .retrieve()
+                .bodyToMono(TeacherResponse.class)
+                .flatMap(teacher -> getPersonInfo(teacher.personId())
+                        .map(person -> new TeacherInfo(teacher.id(), teacher.teacherCode(),
+                                person != null ? person.getFullName() : teacher.teacherCode(),
+                                teacher.specialty(), teacher.isActive())))
+                .onErrorResume(e -> Mono.empty());
+    }
+
     public Flux<StudentInfo> getAllStudents() {
         return studentWebClient.get()
                 .uri("/api/students")
@@ -44,25 +56,7 @@ public class StudentClient {
                 .flatMap(student -> getPersonInfo(student.personId())
                         .map(person -> new StudentInfo(student.id(), student.studentCode(),
                                 person != null ? person.getFullName() : student.studentCode(), true, student.gradeId())))
-                .onErrorResume(e -> {
-                    log.error("❌ Error obteniendo estudiantes: {}", e.getMessage());
-                    return Flux.empty();
-                });
-    }
-
-    public Flux<StudentInfo> getStudentsByGradeId(Integer gradeId) {
-        return studentWebClient.get()
-                .uri("/api/students?gradeId={gradeId}", gradeId)
-                .retrieve()
-                .bodyToFlux(StudentResponse.class)
-                .flatMap(student -> getPersonInfo(student.personId())
-                        .map(person -> new StudentInfo(student.id(), student.studentCode(),
-                                person != null ? person.getFullName() : student.studentCode(), true, student.gradeId())))
                 .onErrorResume(e -> Flux.empty());
-    }
-
-    public Mono<Integer> getStudentGradeId(Integer studentId) {
-        return getStudentInfo(studentId).map(StudentInfo::gradeId);
     }
 
     private Mono<PersonInfo> getPersonInfo(Long personId) {
@@ -84,4 +78,6 @@ public class StudentClient {
         }
     }
     public record StudentInfo(Integer id, String studentCode, String nombre, Boolean active, Integer gradeId) {}
+    public record TeacherResponse(Long id, Long personId, String teacherCode, String specialty, Boolean isActive) {}
+    public record TeacherInfo(Long id, String teacherCode, String nombre, String specialty, Boolean active) {}
 }

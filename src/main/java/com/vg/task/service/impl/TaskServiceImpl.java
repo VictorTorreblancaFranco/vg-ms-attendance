@@ -29,15 +29,15 @@ public class TaskServiceImpl implements TaskUseCase {
     
     @Override
     public Flux<Task> findAll() {
-        return taskRepository.findAll()
-                .filter(task -> !Boolean.TRUE.equals(task.getIsDeleted()));
+        // Devuelve TODAS las tareas (incluyendo eliminadas) - sin filtro
+        return taskRepository.findAll();
     }
     
     @Override
     public Mono<PageResponseDTO<Task>> findAllPaged(int page, int size) {
         int offset = page * size;
         return Mono.zip(
-            taskRepository.countActiveTasks(),
+            taskRepository.count(),
             taskRepository.findAllPaged(offset, size).collectList()
         ).map(tuple -> {
             long total = tuple.getT1();
@@ -49,20 +49,17 @@ public class TaskServiceImpl implements TaskUseCase {
     @Override
     public Mono<Task> findById(Long id) {
         return taskRepository.findById(id)
-                .filter(task -> !Boolean.TRUE.equals(task.getIsDeleted()))
                 .switchIfEmpty(Mono.error(new NotFoundException("Task not found: " + id)));
     }
     
     @Override
     public Flux<Task> findByStatus(String status) {
-        return taskRepository.findByStatus(status)
-                .filter(task -> !Boolean.TRUE.equals(task.getIsDeleted()));
+        return taskRepository.findByStatus(status);
     }
     
     @Override
     public Flux<Task> findByClassId(Integer classId) {
-        return taskRepository.findByClassId(classId)
-                .filter(task -> !Boolean.TRUE.equals(task.getIsDeleted()));
+        return taskRepository.findByClassId(classId);
     }
     
     @Override
@@ -77,12 +74,15 @@ public class TaskServiceImpl implements TaskUseCase {
         if (filter.createdBy() != null) {
             query = query.filter(t -> filter.createdBy().equals(t.getCreatedBy()));
         }
-        return query.filter(task -> !Boolean.TRUE.equals(task.getIsDeleted()));
+        if (filter.isDeleted() != null) {
+            query = query.filter(t -> filter.isDeleted().equals(t.getIsDeleted()));
+        }
+        return query;
     }
     
     @Override
     public Mono<Task> save(Task task) {
-        log.info("📝 Creando tarea: {}", task.getTitle());
+        log.info("Creando tarea: {}", task.getTitle());
         
         if (task.getDueDate() == null) {
             return Mono.error(new BadRequestException("La fecha de entrega es requerida"));
@@ -101,16 +101,13 @@ public class TaskServiceImpl implements TaskUseCase {
                     task.setCreatedAt(OffsetDateTime.now());
                     task.setUpdatedAt(OffsetDateTime.now());
                     return taskRepository.save(task);
-                })
-                .doOnSuccess(saved -> log.info("✅ Tarea guardada con ID: {}", saved.getId()))
-                .doOnError(error -> log.error("❌ Error: {}", error.getMessage()));
+                });
     }
     
     @Override
     public Mono<Task> update(Task task) {
         return taskRepository.findById(task.getId())
                 .switchIfEmpty(Mono.error(new NotFoundException("Task not found: " + task.getId())))
-                .filter(existing -> !Boolean.TRUE.equals(existing.getIsDeleted()))
                 .flatMap(existing -> {
                     if (task.getTitle() != null) existing.setTitle(task.getTitle());
                     if (task.getDescription() != null) existing.setDescription(task.getDescription());
@@ -136,10 +133,21 @@ public class TaskServiceImpl implements TaskUseCase {
     }
     
     @Override
+    public Mono<Task> restore(Long id) {
+        return taskRepository.findById(id)
+                .switchIfEmpty(Mono.error(new NotFoundException("Task not found: " + id)))
+                .flatMap(task -> {
+                    task.setIsDeleted(false);
+                    task.setDeletedAt(null);
+                    task.setUpdatedAt(OffsetDateTime.now());
+                    return taskRepository.save(task);
+                });
+    }
+    
+    @Override
     public Mono<Task> activate(Long id) {
         return taskRepository.findById(id)
                 .switchIfEmpty(Mono.error(new NotFoundException("Task not found: " + id)))
-                .filter(task -> !Boolean.TRUE.equals(task.getIsDeleted()))
                 .flatMap(task -> {
                     if (!"draft".equals(task.getStatus())) {
                         return Mono.error(new BadRequestException("Solo tareas en borrador pueden publicarse"));
@@ -154,7 +162,6 @@ public class TaskServiceImpl implements TaskUseCase {
     public Mono<Task> deactivate(Long id) {
         return taskRepository.findById(id)
                 .switchIfEmpty(Mono.error(new NotFoundException("Task not found: " + id)))
-                .filter(task -> !Boolean.TRUE.equals(task.getIsDeleted()))
                 .flatMap(task -> {
                     task.setStatus("archived");
                     task.setUpdatedAt(OffsetDateTime.now());
@@ -166,7 +173,6 @@ public class TaskServiceImpl implements TaskUseCase {
     public Mono<Task> close(Long id) {
         return taskRepository.findById(id)
                 .switchIfEmpty(Mono.error(new NotFoundException("Task not found: " + id)))
-                .filter(task -> !Boolean.TRUE.equals(task.getIsDeleted()))
                 .flatMap(task -> {
                     task.setStatus("closed");
                     task.setUpdatedAt(OffsetDateTime.now());
@@ -175,20 +181,8 @@ public class TaskServiceImpl implements TaskUseCase {
     }
     
     @Override
-    public Mono<Task> restore(Long id) {
-        return taskRepository.findById(id)
-                .switchIfEmpty(Mono.error(new NotFoundException("Task not found: " + id)))
-                .flatMap(task -> {
-                    task.setIsDeleted(false);
-                    task.setDeletedAt(null);
-                    task.setUpdatedAt(OffsetDateTime.now());
-                    return taskRepository.save(task);
-                });
-    }
-    
-    @Override
     public Mono<byte[]> exportToCsv(TaskFilterDTO filter) {
-        log.info("📊 Exportando tareas a CSV");
+        log.info("Exportando tareas a CSV");
         return filter(filter)
             .collectList()
             .flatMap(exportService::exportToCsv);
@@ -196,7 +190,7 @@ public class TaskServiceImpl implements TaskUseCase {
     
     @Override
     public Mono<byte[]> exportToExcel(TaskFilterDTO filter) {
-        log.info("📊 Exportando tareas a Excel");
+        log.info("Exportando tareas a Excel");
         return filter(filter)
             .collectList()
             .flatMap(exportService::exportToExcel);
@@ -204,15 +198,13 @@ public class TaskServiceImpl implements TaskUseCase {
 
     @Override
     public Flux<Task> findOverdueTasks() {
-        return taskRepository.findByDueDateBeforeAndStatusAndIsDeletedFalse(OffsetDateTime.now(), "published")
-                .filter(task -> !Boolean.TRUE.equals(task.getIsDeleted()));
+        return taskRepository.findByDueDateBeforeAndStatusAndIsDeletedFalse(OffsetDateTime.now(), "published");
     }
 
     @Override
     public Flux<Task> findUpcomingTasks(int days) {
         OffsetDateTime now = OffsetDateTime.now();
         OffsetDateTime future = now.plusDays(days);
-        return taskRepository.findByDueDateBetweenAndStatusAndIsDeletedFalse(now, future, "published")
-                .filter(task -> !Boolean.TRUE.equals(task.getIsDeleted()));
+        return taskRepository.findByDueDateBetweenAndStatusAndIsDeletedFalse(now, future, "published");
     }
 }
