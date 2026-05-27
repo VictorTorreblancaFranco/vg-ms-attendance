@@ -1,5 +1,5 @@
 server:
-  port: ${PORT:8085}
+  port: ${PORT}
   compression:
     enabled: true
     mime-types: application/json,application/xml,text/html,text/xml,text/plain,application/javascript,text/css
@@ -30,8 +30,8 @@ spring:
     allow-bean-definition-overriding: true
 
 services:
-  academic-url: ${ACADEMIC_SERVICE_URL:http://localhost:8082}
-  student-url: ${STUDENT_SERVICE_URL:http://localhost:8083}
+  academic-url: ${ACADEMIC_SERVICE_URL}
+  student-url: ${STUDENT_SERVICE_URL}
 
 logging:
   level:
