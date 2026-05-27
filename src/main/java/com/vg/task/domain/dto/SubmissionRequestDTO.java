@@ -1,7 +1,6 @@
 package com.vg.task.domain.dto;
 
 import jakarta.validation.constraints.NotNull;
-import java.util.List;
 
 public record SubmissionRequestDTO(
     @NotNull(message = "Task ID is required")
@@ -12,7 +11,7 @@ public record SubmissionRequestDTO(
     
     String justificationReason,
     String privateComment,
-    String publicComment,
+    String publicComment
     
-    List<SubmissionFileDTO> files
+    // ❌ Eliminado: List<SubmissionFileDTO> files - Ya no se suben archivos
 ) {}

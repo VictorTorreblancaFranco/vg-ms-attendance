@@ -1,7 +1,6 @@
 package com.vg.task.domain.dto;
 
 import java.time.OffsetDateTime;
-import java.util.List;
 
 public record TaskResponseDTO(
     Long id,
@@ -19,6 +18,7 @@ public record TaskResponseDTO(
     Integer createdBy,
     OffsetDateTime createdAt,
     OffsetDateTime updatedAt,
-    OffsetDateTime deletedAt,
-    List<TaskFileDTO> files
+    OffsetDateTime deletedAt
+    
+    // ❌ Eliminado: List<TaskFileDTO> files - Ya no se manejan archivos en tareas
 ) {}
