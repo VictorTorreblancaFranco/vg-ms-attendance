@@ -21,7 +21,7 @@ public record AttendanceBulkDTO(
         Integer studentId,
         
         @NotNull(message = "Status is required") 
-        String status,  // A, F, J
+        String status,  // A, F, J, T
         
         String observation
     ) {}

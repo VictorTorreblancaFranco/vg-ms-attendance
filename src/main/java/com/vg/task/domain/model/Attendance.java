@@ -24,7 +24,7 @@ public class Attendance {
     @Column("student_id")
     private Integer studentId;
     private LocalDate date;
-    private String status;  // A, F, J
+    private String status;  // A, F, J, T
     private String observation;
     @Column("created_by")
     private Integer createdBy;

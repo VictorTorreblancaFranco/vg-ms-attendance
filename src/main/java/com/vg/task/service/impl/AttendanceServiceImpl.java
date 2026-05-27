@@ -31,7 +31,7 @@ public class AttendanceServiceImpl implements AttendanceService {
 
     private final AttendanceRepository attendanceRepository;
     private final StudentClient studentClient;
-    private static final Set<String> VALID_STATUS = Set.of("A", "F", "J");
+    private static final Set<String> VALID_STATUS = Set.of("A", "F", "J", "T");
 
     @Override
     public Flux<AttendanceDTO> findByClassId(Integer classId) {
@@ -136,6 +136,13 @@ public class AttendanceServiceImpl implements AttendanceService {
                 header.createCell(0).setCellValue("studentId");
                 header.createCell(1).setCellValue("status");
                 header.createCell(2).setCellValue("observation");
+                Row example = sheet.createRow(1);
+                example.createCell(0).setCellValue("1");
+                example.createCell(1).setCellValue("A");
+                example.createCell(2).setCellValue("A=Presente, F=Falta, J=Justificado, T=Tardanza 08:15");
+                for (int i = 0; i < 3; i++) {
+                    sheet.autoSizeColumn(i);
+                }
                 workbook.write(out);
                 return out.toByteArray();
             } catch (Exception e) {
@@ -187,7 +194,7 @@ public class AttendanceServiceImpl implements AttendanceService {
         // Validar status de cada item
         for (AttendanceBulkDTO.BulkAttendanceItem item : bulkDTO.attendances()) {
             if (!VALID_STATUS.contains(item.status())) {
-                return Mono.error(new BadRequestException("Status inválido: " + item.status() + ". Debe ser A, F o J"));
+                return Mono.error(new BadRequestException("Status inválido: " + item.status() + ". Debe ser A, F, J o T"));
             }
         }
         
@@ -229,7 +236,7 @@ public class AttendanceServiceImpl implements AttendanceService {
 
     private Mono<Void> validateStatus(String status) {
         if (!VALID_STATUS.contains(status)) {
-            return Mono.error(new BadRequestException("Status inválido: " + status + ". Debe ser A, F o J"));
+            return Mono.error(new BadRequestException("Status inválido: " + status + ". Debe ser A, F, J o T"));
         }
         return Mono.empty();
     }
