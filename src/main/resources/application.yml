@@ -9,9 +9,9 @@ spring:
   application:
     name: vg-ms-attendance
 
-  # R2DBC para PostgreSQL Reactivo
+  # R2DBC para PostgreSQL Reactivo (con SSL)
   r2dbc:
-    url: ${DB_URL:r2dbc:postgresql://ep-twilight-rain-aquzch63-pooler.c-8.us-east-1.aws.neon.tech/neondb}
+    url: ${DB_URL:r2dbc:postgresql://ep-twilight-rain-aquzch63-pooler.c-8.us-east-1.aws.neon.tech/neondb?sslmode=require}
     username: ${DB_USERNAME:neondb_owner}
     password: ${DB_PASSWORD:npg_gevd5bEc4Gai}
     pool:
@@ -20,7 +20,7 @@ spring:
       max-idle-time: 30m
       max-life-time: 60m
 
-  # Flyway necesita URL JDBC (no R2DBC)
+  # Flyway con JDBC (ya tiene SSL)
   flyway:
     enabled: true
     baseline-on-migrate: true

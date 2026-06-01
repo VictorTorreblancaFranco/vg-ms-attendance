@@ -1,0 +1,122 @@
+2026-05-31T20:35:27.735-05:00  INFO 23317 --- [vg-ms-attendance] [main] c.v.a.VgMsAttendanceApplication          : Starting VgMsAttendanceApplication using Java 21.0.11 with PID 23317 (/Users/victortorreblanca/Edunova-microservicios-backend/vg-ms-attendance/target/classes started by victortorreblanca in /Users/victortorreblanca/Edunova-microservicios-backend/vg-ms-attendance)
+2026-05-31T20:35:27.735-05:00 DEBUG 23317 --- [vg-ms-attendance] [main] c.v.a.VgMsAttendanceApplication          : Running with Spring Boot v3.4.5, Spring v6.2.6
+2026-05-31T20:35:27.736-05:00  INFO 23317 --- [vg-ms-attendance] [main] c.v.a.VgMsAttendanceApplication          : No active profile set, falling back to 1 default profile: "default"
+2026-05-31T20:35:28.039-05:00  INFO 23317 --- [vg-ms-attendance] [main] .s.d.r.c.RepositoryConfigurationDelegate : Bootstrapping Spring Data R2DBC repositories in DEFAULT mode.
+2026-05-31T20:35:28.044-05:00  INFO 23317 --- [vg-ms-attendance] [main] .s.d.r.c.RepositoryConfigurationDelegate : Finished Spring Data repository scanning in 2 ms. Found 0 R2DBC repository interfaces.
+2026-05-31T20:35:28.368-05:00  INFO 23317 --- [vg-ms-attendance] [main] o.s.b.a.e.web.EndpointLinksResolver      : Exposing 3 endpoints beneath base path '/actuator'
+2026-05-31T20:35:32.212-05:00  INFO 23317 --- [vg-ms-attendance] [main] org.flywaydb.core.FlywayExecutor         : Database: jdbc:postgresql://ep-twilight-rain-aquzch63-pooler.c-8.us-east-1.aws.neon.tech/neondb?sslmode=require (PostgreSQL 17.10)
+2026-05-31T20:36:03.140-05:00  INFO 23317 --- [vg-ms-attendance] [main] o.f.c.i.s.JdbcTableSchemaHistory         : Schema history table "public"."flyway_schema_history" does not exist yet
+2026-05-31T20:36:03.316-05:00  INFO 23317 --- [vg-ms-attendance] [main] o.f.core.internal.command.DbValidate     : Successfully validated 0 migrations (execution time 00:00.487s)
+2026-05-31T20:36:03.316-05:00  WARN 23317 --- [vg-ms-attendance] [main] o.f.core.internal.command.DbValidate     : No migrations found. Are your locations set up correctly?
+2026-05-31T20:36:04.998-05:00  INFO 23317 --- [vg-ms-attendance] [main] o.f.c.i.s.JdbcTableSchemaHistory         : Creating Schema History table "public"."flyway_schema_history" with baseline ...
+2026-05-31T20:36:06.466-05:00  INFO 23317 --- [vg-ms-attendance] [main] o.f.core.internal.command.DbBaseline     : Successfully baselined schema with version: 1
+2026-05-31T20:36:37.390-05:00  INFO 23317 --- [vg-ms-attendance] [main] o.f.core.internal.command.DbMigrate      : Current version of schema "public": 1
+2026-05-31T20:36:37.594-05:00  INFO 23317 --- [vg-ms-attendance] [main] o.f.core.internal.command.DbMigrate      : Schema "public" is up to date. No migration necessary.
+2026-05-31T20:36:38.968-05:00  INFO 23317 --- [vg-ms-attendance] [main] o.s.b.web.embedded.netty.NettyWebServer  : Netty started on port 8085 (http)
+2026-05-31T20:36:38.973-05:00  INFO 23317 --- [vg-ms-attendance] [main] c.v.a.VgMsAttendanceApplication          : Started VgMsAttendanceApplication in 71.376 seconds (process running for 71.491)
+2026-05-31T20:37:17.686-05:00  WARN 23317 --- [vg-ms-attendance] [reactor-tcp-nio-2] s.b.a.r.ConnectionFactoryHealthIndicator : Health check failed
+
+io.r2dbc.postgresql.ExceptionFactory$PostgresqlAuthenticationFailure: connection is insecure (try using `sslmode=require`)
+	at io.r2dbc.postgresql.ExceptionFactory.createException(ExceptionFactory.java:86) ~[r2dbc-postgresql-1.0.7.RELEASE.jar:1.0.7.RELEASE]
+	at io.r2dbc.postgresql.ExceptionFactory.createException(ExceptionFactory.java:65) ~[r2dbc-postgresql-1.0.7.RELEASE.jar:1.0.7.RELEASE]
+	at io.r2dbc.postgresql.ExceptionFactory.handleErrorResponse(ExceptionFactory.java:132) ~[r2dbc-postgresql-1.0.7.RELEASE.jar:1.0.7.RELEASE]
+	at reactor.core.publisher.FluxHandle$HandleSubscriber.onNext(FluxHandle.java:113) ~[reactor-core-3.7.5.jar:3.7.5]
+	at reactor.core.publisher.MonoFlatMapMany$FlatMapManyInner.onNext(MonoFlatMapMany.java:251) ~[reactor-core-3.7.5.jar:3.7.5]
+	at reactor.core.publisher.FluxHandle$HandleSubscriber.onNext(FluxHandle.java:129) ~[reactor-core-3.7.5.jar:3.7.5]
+	at reactor.core.publisher.FluxCreate$BufferAsyncSink.drain(FluxCreate.java:880) ~[reactor-core-3.7.5.jar:3.7.5]
+	at reactor.core.publisher.FluxCreate$BufferAsyncSink.next(FluxCreate.java:805) ~[reactor-core-3.7.5.jar:3.7.5]
+	at reactor.core.publisher.FluxCreate$SerializedFluxSink.next(FluxCreate.java:163) ~[reactor-core-3.7.5.jar:3.7.5]
+	at io.r2dbc.postgresql.client.ReactorNettyClient$Conversation.emit(ReactorNettyClient.java:696) ~[r2dbc-postgresql-1.0.7.RELEASE.jar:1.0.7.RELEASE]
+	at io.r2dbc.postgresql.client.ReactorNettyClient$BackendMessageSubscriber.emit(ReactorNettyClient.java:948) ~[r2dbc-postgresql-1.0.7.RELEASE.jar:1.0.7.RELEASE]
+	at io.r2dbc.postgresql.client.ReactorNettyClient$BackendMessageSubscriber.onNext(ReactorNettyClient.java:822) ~[r2dbc-postgresql-1.0.7.RELEASE.jar:1.0.7.RELEASE]
+	at io.r2dbc.postgresql.client.ReactorNettyClient$BackendMessageSubscriber.onNext(ReactorNettyClient.java:728) ~[r2dbc-postgresql-1.0.7.RELEASE.jar:1.0.7.RELEASE]
+	at reactor.core.publisher.FluxHandle$HandleSubscriber.onNext(FluxHandle.java:129) ~[reactor-core-3.7.5.jar:3.7.5]
+	at reactor.core.publisher.FluxPeekFuseable$PeekConditionalSubscriber.onNext(FluxPeekFuseable.java:854) ~[reactor-core-3.7.5.jar:3.7.5]
+	at reactor.core.publisher.FluxMap$MapConditionalSubscriber.onNext(FluxMap.java:224) ~[reactor-core-3.7.5.jar:3.7.5]
+	at reactor.core.publisher.FluxMap$MapConditionalSubscriber.onNext(FluxMap.java:224) ~[reactor-core-3.7.5.jar:3.7.5]
+	at reactor.netty.channel.FluxReceive.drainReceiver(FluxReceive.java:292) ~[reactor-netty-core-1.2.5.jar:1.2.5]
+	at reactor.netty.channel.FluxReceive.onInboundNext(FluxReceive.java:401) ~[reactor-netty-core-1.2.5.jar:1.2.5]
+	at reactor.netty.channel.ChannelOperations.onInboundNext(ChannelOperations.java:435) ~[reactor-netty-core-1.2.5.jar:1.2.5]
+	at reactor.netty.channel.ChannelOperationsHandler.channelRead(ChannelOperationsHandler.java:115) ~[reactor-netty-core-1.2.5.jar:1.2.5]
+	at io.netty.channel.AbstractChannelHandlerContext.invokeChannelRead(AbstractChannelHandlerContext.java:444) ~[netty-transport-4.1.119.Final.jar:4.1.119.Final]
+	at io.netty.channel.AbstractChannelHandlerContext.invokeChannelRead(AbstractChannelHandlerContext.java:420) ~[netty-transport-4.1.119.Final.jar:4.1.119.Final]
+	at io.netty.channel.AbstractChannelHandlerContext.fireChannelRead(AbstractChannelHandlerContext.java:412) ~[netty-transport-4.1.119.Final.jar:4.1.119.Final]
+	at io.netty.handler.codec.ByteToMessageDecoder.fireChannelRead(ByteToMessageDecoder.java:346) ~[netty-codec-4.1.119.Final.jar:4.1.119.Final]
+	at io.netty.handler.codec.ByteToMessageDecoder.channelRead(ByteToMessageDecoder.java:318) ~[netty-codec-4.1.119.Final.jar:4.1.119.Final]
+	at io.netty.channel.AbstractChannelHandlerContext.invokeChannelRead(AbstractChannelHandlerContext.java:444) ~[netty-transport-4.1.119.Final.jar:4.1.119.Final]
+	at io.netty.channel.AbstractChannelHandlerContext.invokeChannelRead(AbstractChannelHandlerContext.java:420) ~[netty-transport-4.1.119.Final.jar:4.1.119.Final]
+	at io.netty.channel.AbstractChannelHandlerContext.fireChannelRead(AbstractChannelHandlerContext.java:412) ~[netty-transport-4.1.119.Final.jar:4.1.119.Final]
+	at io.netty.channel.DefaultChannelPipeline$HeadContext.channelRead(DefaultChannelPipeline.java:1357) ~[netty-transport-4.1.119.Final.jar:4.1.119.Final]
+	at io.netty.channel.AbstractChannelHandlerContext.invokeChannelRead(AbstractChannelHandlerContext.java:440) ~[netty-transport-4.1.119.Final.jar:4.1.119.Final]
+	at io.netty.channel.AbstractChannelHandlerContext.invokeChannelRead(AbstractChannelHandlerContext.java:420) ~[netty-transport-4.1.119.Final.jar:4.1.119.Final]
+	at io.netty.channel.DefaultChannelPipeline.fireChannelRead(DefaultChannelPipeline.java:868) ~[netty-transport-4.1.119.Final.jar:4.1.119.Final]
+	at io.netty.channel.nio.AbstractNioByteChannel$NioByteUnsafe.read(AbstractNioByteChannel.java:166) ~[netty-transport-4.1.119.Final.jar:4.1.119.Final]
+	at io.netty.channel.nio.NioEventLoop.processSelectedKey(NioEventLoop.java:796) ~[netty-transport-4.1.119.Final.jar:4.1.119.Final]
+	at io.netty.channel.nio.NioEventLoop.processSelectedKeysOptimized(NioEventLoop.java:732) ~[netty-transport-4.1.119.Final.jar:4.1.119.Final]
+	at io.netty.channel.nio.NioEventLoop.processSelectedKeys(NioEventLoop.java:658) ~[netty-transport-4.1.119.Final.jar:4.1.119.Final]
+	at io.netty.channel.nio.NioEventLoop.run(NioEventLoop.java:562) ~[netty-transport-4.1.119.Final.jar:4.1.119.Final]
+	at io.netty.util.concurrent.SingleThreadEventExecutor$4.run(SingleThreadEventExecutor.java:998) ~[netty-common-4.1.119.Final.jar:4.1.119.Final]
+	at io.netty.util.internal.ThreadExecutorMap$2.run(ThreadExecutorMap.java:74) ~[netty-common-4.1.119.Final.jar:4.1.119.Final]
+	at io.netty.util.concurrent.FastThreadLocalRunnable.run(FastThreadLocalRunnable.java:30) ~[netty-common-4.1.119.Final.jar:4.1.119.Final]
+	at java.base/java.lang.Thread.run(Thread.java:1583) ~[na:na]
+
+2026-05-31T20:37:24.166-05:00  WARN 23317 --- [vg-ms-attendance] [reactor-tcp-nio-5] s.b.a.r.ConnectionFactoryHealthIndicator : Health check failed
+
+io.r2dbc.postgresql.ExceptionFactory$PostgresqlAuthenticationFailure: connection is insecure (try using `sslmode=require`)
+	at io.r2dbc.postgresql.ExceptionFactory.createException(ExceptionFactory.java:86) ~[r2dbc-postgresql-1.0.7.RELEASE.jar:1.0.7.RELEASE]
+	at io.r2dbc.postgresql.ExceptionFactory.createException(ExceptionFactory.java:65) ~[r2dbc-postgresql-1.0.7.RELEASE.jar:1.0.7.RELEASE]
+	at io.r2dbc.postgresql.ExceptionFactory.handleErrorResponse(ExceptionFactory.java:132) ~[r2dbc-postgresql-1.0.7.RELEASE.jar:1.0.7.RELEASE]
+	at reactor.core.publisher.FluxHandle$HandleSubscriber.onNext(FluxHandle.java:113) ~[reactor-core-3.7.5.jar:3.7.5]
+	at reactor.core.publisher.MonoFlatMapMany$FlatMapManyInner.onNext(MonoFlatMapMany.java:251) ~[reactor-core-3.7.5.jar:3.7.5]
+	at reactor.core.publisher.FluxHandle$HandleSubscriber.onNext(FluxHandle.java:129) ~[reactor-core-3.7.5.jar:3.7.5]
+	at reactor.core.publisher.FluxCreate$BufferAsyncSink.drain(FluxCreate.java:880) ~[reactor-core-3.7.5.jar:3.7.5]
+	at reactor.core.publisher.FluxCreate$BufferAsyncSink.next(FluxCreate.java:805) ~[reactor-core-3.7.5.jar:3.7.5]
+	at reactor.core.publisher.FluxCreate$SerializedFluxSink.next(FluxCreate.java:163) ~[reactor-core-3.7.5.jar:3.7.5]
+	at io.r2dbc.postgresql.client.ReactorNettyClient$Conversation.emit(ReactorNettyClient.java:696) ~[r2dbc-postgresql-1.0.7.RELEASE.jar:1.0.7.RELEASE]
+	at io.r2dbc.postgresql.client.ReactorNettyClient$BackendMessageSubscriber.emit(ReactorNettyClient.java:948) ~[r2dbc-postgresql-1.0.7.RELEASE.jar:1.0.7.RELEASE]
+	at io.r2dbc.postgresql.client.ReactorNettyClient$BackendMessageSubscriber.onNext(ReactorNettyClient.java:822) ~[r2dbc-postgresql-1.0.7.RELEASE.jar:1.0.7.RELEASE]
+	at io.r2dbc.postgresql.client.ReactorNettyClient$BackendMessageSubscriber.onNext(ReactorNettyClient.java:728) ~[r2dbc-postgresql-1.0.7.RELEASE.jar:1.0.7.RELEASE]
+	at reactor.core.publisher.FluxHandle$HandleSubscriber.onNext(FluxHandle.java:129) ~[reactor-core-3.7.5.jar:3.7.5]
+	at reactor.core.publisher.FluxPeekFuseable$PeekConditionalSubscriber.onNext(FluxPeekFuseable.java:854) ~[reactor-core-3.7.5.jar:3.7.5]
+	at reactor.core.publisher.FluxMap$MapConditionalSubscriber.onNext(FluxMap.java:224) ~[reactor-core-3.7.5.jar:3.7.5]
+	at reactor.core.publisher.FluxMap$MapConditionalSubscriber.onNext(FluxMap.java:224) ~[reactor-core-3.7.5.jar:3.7.5]
+	at reactor.netty.channel.FluxReceive.drainReceiver(FluxReceive.java:292) ~[reactor-netty-core-1.2.5.jar:1.2.5]
+	at reactor.netty.channel.FluxReceive.onInboundNext(FluxReceive.java:401) ~[reactor-netty-core-1.2.5.jar:1.2.5]
+	at reactor.netty.channel.ChannelOperations.onInboundNext(ChannelOperations.java:435) ~[reactor-netty-core-1.2.5.jar:1.2.5]
+	at reactor.netty.channel.ChannelOperationsHandler.channelRead(ChannelOperationsHandler.java:115) ~[reactor-netty-core-1.2.5.jar:1.2.5]
+	at io.netty.channel.AbstractChannelHandlerContext.invokeChannelRead(AbstractChannelHandlerContext.java:444) ~[netty-transport-4.1.119.Final.jar:4.1.119.Final]
+	at io.netty.channel.AbstractChannelHandlerContext.invokeChannelRead(AbstractChannelHandlerContext.java:420) ~[netty-transport-4.1.119.Final.jar:4.1.119.Final]
+	at io.netty.channel.AbstractChannelHandlerContext.fireChannelRead(AbstractChannelHandlerContext.java:412) ~[netty-transport-4.1.119.Final.jar:4.1.119.Final]
+	at io.netty.handler.codec.ByteToMessageDecoder.fireChannelRead(ByteToMessageDecoder.java:346) ~[netty-codec-4.1.119.Final.jar:4.1.119.Final]
+	at io.netty.handler.codec.ByteToMessageDecoder.channelRead(ByteToMessageDecoder.java:318) ~[netty-codec-4.1.119.Final.jar:4.1.119.Final]
+	at io.netty.channel.AbstractChannelHandlerContext.invokeChannelRead(AbstractChannelHandlerContext.java:444) ~[netty-transport-4.1.119.Final.jar:4.1.119.Final]
+	at io.netty.channel.AbstractChannelHandlerContext.invokeChannelRead(AbstractChannelHandlerContext.java:420) ~[netty-transport-4.1.119.Final.jar:4.1.119.Final]
+	at io.netty.channel.AbstractChannelHandlerContext.fireChannelRead(AbstractChannelHandlerContext.java:412) ~[netty-transport-4.1.119.Final.jar:4.1.119.Final]
+	at io.netty.channel.DefaultChannelPipeline$HeadContext.channelRead(DefaultChannelPipeline.java:1357) ~[netty-transport-4.1.119.Final.jar:4.1.119.Final]
+	at io.netty.channel.AbstractChannelHandlerContext.invokeChannelRead(AbstractChannelHandlerContext.java:440) ~[netty-transport-4.1.119.Final.jar:4.1.119.Final]
+	at io.netty.channel.AbstractChannelHandlerContext.invokeChannelRead(AbstractChannelHandlerContext.java:420) ~[netty-transport-4.1.119.Final.jar:4.1.119.Final]
+	at io.netty.channel.DefaultChannelPipeline.fireChannelRead(DefaultChannelPipeline.java:868) ~[netty-transport-4.1.119.Final.jar:4.1.119.Final]
+	at io.netty.channel.nio.AbstractNioByteChannel$NioByteUnsafe.read(AbstractNioByteChannel.java:166) ~[netty-transport-4.1.119.Final.jar:4.1.119.Final]
+	at io.netty.channel.nio.NioEventLoop.processSelectedKey(NioEventLoop.java:796) ~[netty-transport-4.1.119.Final.jar:4.1.119.Final]
+	at io.netty.channel.nio.NioEventLoop.processSelectedKeysOptimized(NioEventLoop.java:732) ~[netty-transport-4.1.119.Final.jar:4.1.119.Final]
+	at io.netty.channel.nio.NioEventLoop.processSelectedKeys(NioEventLoop.java:658) ~[netty-transport-4.1.119.Final.jar:4.1.119.Final]
+	at io.netty.channel.nio.NioEventLoop.run(NioEventLoop.java:562) ~[netty-transport-4.1.119.Final.jar:4.1.119.Final]
+	at io.netty.util.concurrent.SingleThreadEventExecutor$4.run(SingleThreadEventExecutor.java:998) ~[netty-common-4.1.119.Final.jar:4.1.119.Final]
+	at io.netty.util.internal.ThreadExecutorMap$2.run(ThreadExecutorMap.java:74) ~[netty-common-4.1.119.Final.jar:4.1.119.Final]
+	at io.netty.util.concurrent.FastThreadLocalRunnable.run(FastThreadLocalRunnable.java:30) ~[netty-common-4.1.119.Final.jar:4.1.119.Final]
+	at java.base/java.lang.Thread.run(Thread.java:1583) ~[na:na]
+
+2026-05-31T20:40:14.619-05:00  INFO 23317 --- [vg-ms-attendance] [SpringApplicationShutdownHook] o.s.b.w.embedded.netty.GracefulShutdown  : Commencing graceful shutdown. Waiting for active requests to complete
+2026-05-31T20:40:14.626-05:00  INFO 23317 --- [vg-ms-attendance] [netty-shutdown] o.s.b.w.embedded.netty.GracefulShutdown  : Graceful shutdown complete
+2026-05-31T20:40:20.274-05:00  INFO 24072 --- [vg-ms-attendance] [main] c.v.a.VgMsAttendanceApplication          : Starting VgMsAttendanceApplication using Java 21.0.11 with PID 24072 (/Users/victortorreblanca/Edunova-microservicios-backend/vg-ms-attendance/target/classes started by victortorreblanca in /Users/victortorreblanca/Edunova-microservicios-backend/vg-ms-attendance)
+2026-05-31T20:40:20.274-05:00 DEBUG 24072 --- [vg-ms-attendance] [main] c.v.a.VgMsAttendanceApplication          : Running with Spring Boot v3.4.5, Spring v6.2.6
+2026-05-31T20:40:20.274-05:00  INFO 24072 --- [vg-ms-attendance] [main] c.v.a.VgMsAttendanceApplication          : No active profile set, falling back to 1 default profile: "default"
+2026-05-31T20:40:20.558-05:00  INFO 24072 --- [vg-ms-attendance] [main] .s.d.r.c.RepositoryConfigurationDelegate : Bootstrapping Spring Data R2DBC repositories in DEFAULT mode.
+2026-05-31T20:40:20.563-05:00  INFO 24072 --- [vg-ms-attendance] [main] .s.d.r.c.RepositoryConfigurationDelegate : Finished Spring Data repository scanning in 3 ms. Found 0 R2DBC repository interfaces.
+2026-05-31T20:40:20.885-05:00  INFO 24072 --- [vg-ms-attendance] [main] o.s.b.a.e.web.EndpointLinksResolver      : Exposing 3 endpoints beneath base path '/actuator'
+2026-05-31T20:40:24.466-05:00  INFO 24072 --- [vg-ms-attendance] [main] org.flywaydb.core.FlywayExecutor         : Database: jdbc:postgresql://ep-twilight-rain-aquzch63-pooler.c-8.us-east-1.aws.neon.tech/neondb?sslmode=require (PostgreSQL 17.10)
+2026-05-31T20:40:27.828-05:00  INFO 24072 --- [vg-ms-attendance] [main] o.f.core.internal.command.DbValidate     : Successfully validated 1 migration (execution time 00:01.018s)
+2026-05-31T20:40:32.471-05:00  INFO 24072 --- [vg-ms-attendance] [main] o.f.core.internal.command.DbMigrate      : Current version of schema "public": 1
+2026-05-31T20:40:32.631-05:00  INFO 24072 --- [vg-ms-attendance] [main] o.f.core.internal.command.DbMigrate      : Schema "public" is up to date. No migration necessary.
+2026-05-31T20:40:34.945-05:00  INFO 24072 --- [vg-ms-attendance] [main] o.s.b.web.embedded.netty.NettyWebServer  : Netty started on port 8085 (http)
+2026-05-31T20:40:34.950-05:00  INFO 24072 --- [vg-ms-attendance] [main] c.v.a.VgMsAttendanceApplication          : Started VgMsAttendanceApplication in 14.799 seconds (process running for 14.884)
