@@ -120,3 +120,46 @@ io.r2dbc.postgresql.ExceptionFactory$PostgresqlAuthenticationFailure: connection
 2026-05-31T20:40:32.631-05:00  INFO 24072 --- [vg-ms-attendance] [main] o.f.core.internal.command.DbMigrate      : Schema "public" is up to date. No migration necessary.
 2026-05-31T20:40:34.945-05:00  INFO 24072 --- [vg-ms-attendance] [main] o.s.b.web.embedded.netty.NettyWebServer  : Netty started on port 8085 (http)
 2026-05-31T20:40:34.950-05:00  INFO 24072 --- [vg-ms-attendance] [main] c.v.a.VgMsAttendanceApplication          : Started VgMsAttendanceApplication in 14.799 seconds (process running for 14.884)
+2026-05-31T20:59:37.219-05:00  INFO 26581 --- [vg-ms-attendance] [main] c.v.a.VgMsAttendanceApplication          : Starting VgMsAttendanceApplication using Java 21.0.11 with PID 26581 (/Users/victortorreblanca/Edunova-microservicios-backend/vg-ms-attendance/target/classes started by victortorreblanca in /Users/victortorreblanca/Edunova-microservicios-backend/vg-ms-attendance)
+2026-05-31T20:59:37.220-05:00 DEBUG 26581 --- [vg-ms-attendance] [main] c.v.a.VgMsAttendanceApplication          : Running with Spring Boot v3.4.5, Spring v6.2.6
+2026-05-31T20:59:37.220-05:00  INFO 26581 --- [vg-ms-attendance] [main] c.v.a.VgMsAttendanceApplication          : No active profile set, falling back to 1 default profile: "default"
+2026-05-31T20:59:37.531-05:00  INFO 26581 --- [vg-ms-attendance] [main] .s.d.r.c.RepositoryConfigurationDelegate : Bootstrapping Spring Data R2DBC repositories in DEFAULT mode.
+2026-05-31T20:59:37.572-05:00  INFO 26581 --- [vg-ms-attendance] [main] .s.d.r.c.RepositoryConfigurationDelegate : Finished Spring Data repository scanning in 39 ms. Found 1 R2DBC repository interface.
+2026-05-31T20:59:37.923-05:00  INFO 26581 --- [vg-ms-attendance] [main] o.s.b.a.e.web.EndpointLinksResolver      : Exposing 3 endpoints beneath base path '/actuator'
+2026-05-31T20:59:41.538-05:00  INFO 26581 --- [vg-ms-attendance] [main] org.flywaydb.core.FlywayExecutor         : Database: jdbc:postgresql://ep-twilight-rain-aquzch63-pooler.c-8.us-east-1.aws.neon.tech/neondb?sslmode=require (PostgreSQL 17.10)
+2026-05-31T20:59:44.613-05:00  INFO 26581 --- [vg-ms-attendance] [main] o.f.core.internal.command.DbValidate     : Successfully validated 1 migration (execution time 00:01.449s)
+2026-05-31T20:59:49.296-05:00  INFO 26581 --- [vg-ms-attendance] [main] o.f.core.internal.command.DbMigrate      : Current version of schema "public": 1
+2026-05-31T20:59:49.436-05:00  INFO 26581 --- [vg-ms-attendance] [main] o.f.core.internal.command.DbMigrate      : Schema "public" is up to date. No migration necessary.
+2026-05-31T20:59:52.547-05:00  INFO 24072 --- [vg-ms-attendance] [SpringApplicationShutdownHook] o.s.b.w.embedded.netty.GracefulShutdown  : Commencing graceful shutdown. Waiting for active requests to complete
+2026-05-31T20:59:52.550-05:00  INFO 24072 --- [vg-ms-attendance] [netty-shutdown] o.s.b.w.embedded.netty.GracefulShutdown  : Graceful shutdown complete
+2026-05-31T20:59:53.781-05:00  WARN 26581 --- [vg-ms-attendance] [main] onfigReactiveWebServerApplicationContext : Exception encountered during context initialization - cancelling refresh attempt: org.springframework.context.ApplicationContextException: Failed to start bean 'webServerStartStop'
+2026-05-31T20:59:53.790-05:00  INFO 26581 --- [vg-ms-attendance] [main] .s.b.a.l.ConditionEvaluationReportLogger : 
+
+Error starting ApplicationContext. To display the condition evaluation report re-run your application with 'debug' enabled.
+2026-05-31T20:59:53.796-05:00 ERROR 26581 --- [vg-ms-attendance] [main] o.s.b.d.LoggingFailureAnalysisReporter   : 
+
+***************************
+APPLICATION FAILED TO START
+***************************
+
+Description:
+
+Web server failed to start. Port 8085 was already in use.
+
+Action:
+
+Identify and stop the process that's listening on port 8085 or configure this application to listen on another port.
+
+2026-05-31T21:00:06.321-05:00  INFO 27076 --- [vg-ms-attendance] [main] c.v.a.VgMsAttendanceApplication          : Starting VgMsAttendanceApplication using Java 21.0.11 with PID 27076 (/Users/victortorreblanca/Edunova-microservicios-backend/vg-ms-attendance/target/classes started by victortorreblanca in /Users/victortorreblanca/Edunova-microservicios-backend/vg-ms-attendance)
+2026-05-31T21:00:06.321-05:00 DEBUG 27076 --- [vg-ms-attendance] [main] c.v.a.VgMsAttendanceApplication          : Running with Spring Boot v3.4.5, Spring v6.2.6
+2026-05-31T21:00:06.321-05:00  INFO 27076 --- [vg-ms-attendance] [main] c.v.a.VgMsAttendanceApplication          : No active profile set, falling back to 1 default profile: "default"
+2026-05-31T21:00:06.596-05:00  INFO 27076 --- [vg-ms-attendance] [main] .s.d.r.c.RepositoryConfigurationDelegate : Bootstrapping Spring Data R2DBC repositories in DEFAULT mode.
+2026-05-31T21:00:06.634-05:00  INFO 27076 --- [vg-ms-attendance] [main] .s.d.r.c.RepositoryConfigurationDelegate : Finished Spring Data repository scanning in 36 ms. Found 1 R2DBC repository interface.
+2026-05-31T21:00:06.975-05:00  INFO 27076 --- [vg-ms-attendance] [main] o.s.b.a.e.web.EndpointLinksResolver      : Exposing 3 endpoints beneath base path '/actuator'
+2026-05-31T21:00:09.484-05:00  INFO 27076 --- [vg-ms-attendance] [main] org.flywaydb.core.FlywayExecutor         : Database: jdbc:postgresql://ep-twilight-rain-aquzch63-pooler.c-8.us-east-1.aws.neon.tech/neondb?sslmode=require (PostgreSQL 17.10)
+2026-05-31T21:00:13.314-05:00  INFO 27076 --- [vg-ms-attendance] [main] o.f.core.internal.command.DbValidate     : Successfully validated 1 migration (execution time 00:00.629s)
+2026-05-31T21:00:18.474-05:00  INFO 27076 --- [vg-ms-attendance] [main] o.f.core.internal.command.DbMigrate      : Current version of schema "public": 1
+2026-05-31T21:00:18.635-05:00  INFO 27076 --- [vg-ms-attendance] [main] o.f.core.internal.command.DbMigrate      : Schema "public" is up to date. No migration necessary.
+2026-05-31T21:00:20.001-05:00  INFO 27076 --- [vg-ms-attendance] [main] o.s.b.web.embedded.netty.NettyWebServer  : Netty started on port 8085 (http)
+2026-05-31T21:00:20.007-05:00  INFO 27076 --- [vg-ms-attendance] [main] c.v.a.VgMsAttendanceApplication          : Started VgMsAttendanceApplication in 13.808 seconds (process running for 13.893)
+2026-05-31T21:04:06.221-05:00  INFO 27076 --- [vg-ms-attendance] [reactor-tcp-nio-1] c.v.a.a.s.AttendanceApplicationService   : Registering attendance for student: est-001 in class: cla-001
