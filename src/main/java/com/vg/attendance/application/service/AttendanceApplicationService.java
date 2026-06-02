@@ -8,7 +8,7 @@ import com.vg.attendance.application.port.in.command.UpdateAttendanceCommand;
 import com.vg.attendance.application.port.in.dto.AttendanceResponse;
 import com.vg.attendance.application.port.out.AttendanceRepositoryPort;
 import com.vg.attendance.domain.model.Attendance;
-import com.vg.attendance.domain.valueobject.AttendanceStatus;
+import com.vg.attendance.domain.service.AttendanceDomainService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -29,12 +29,12 @@ public class AttendanceApplicationService implements
         UpdateAttendanceUseCase {
     
     private final AttendanceRepositoryPort attendanceRepository;
+    private final AttendanceDomainService domainService;
     
     @Override
     public Mono<AttendanceResponse> registerAttendance(RegisterAttendanceCommand command) {
         log.info("Registering attendance for student: {} in class: {}", command.getEstudianteId(), command.getClaseId());
         
-        // Validar que no exista duplicado
         return attendanceRepository.existsByEstudianteIdAndClaseIdAndFecha(
                 command.getEstudianteId(), command.getClaseId(), command.getFecha())
             .flatMap(exists -> {
@@ -42,16 +42,6 @@ public class AttendanceApplicationService implements
                     return Mono.error(new RuntimeException("Ya existe un registro de asistencia para este estudiante en esta clase en esta fecha"));
                 }
                 
-                // Validar estado
-                AttendanceStatus status = AttendanceStatus.fromCode(command.getEstado());
-                if (status == AttendanceStatus.TARDANZA && command.getHoraLlegada() == null) {
-                    return Mono.error(new RuntimeException("La tardanza requiere hora de llegada"));
-                }
-                if (status == AttendanceStatus.JUSTIFICADO && command.getJustificacionNota() == null) {
-                    return Mono.error(new RuntimeException("La justificación requiere una nota"));
-                }
-                
-                // Crear entidad
                 Attendance attendance = Attendance.builder()
                     .estudianteId(command.getEstudianteId())
                     .claseId(command.getClaseId())
@@ -69,9 +59,44 @@ public class AttendanceApplicationService implements
                     .version(0)
                     .build();
                 
-                return attendanceRepository.save(attendance);
+                return domainService.validateAttendance(attendance)
+                    .flatMap(attendanceRepository::save);
             })
             .map(this::toResponse);
+    }
+    
+    @Override
+    public Mono<AttendanceResponse> updateAttendance(Long id, UpdateAttendanceCommand command) {
+        log.info("Updating attendance: {}", id);
+        
+        return attendanceRepository.findById(id)
+            .switchIfEmpty(Mono.error(new RuntimeException("Asistencia no encontrada con id: " + id)))
+            .flatMap(attendance -> {
+                if (command.getEstado() != null) {
+                    attendance.setEstado(command.getEstado());
+                }
+                if (command.getHoraLlegada() != null) {
+                    attendance.setHoraLlegada(command.getHoraLlegada());
+                }
+                if (command.getJustificacionNota() != null) {
+                    attendance.setJustificacionNota(command.getJustificacionNota());
+                }
+                if (command.getJustificacionFotoUrl() != null) {
+                    attendance.setJustificacionFotoUrl(command.getJustificacionFotoUrl());
+                }
+                attendance.setActualizadoEn(LocalDateTime.now());
+                attendance.setVersion(attendance.getVersion() + 1);
+                
+                return domainService.validateAttendance(attendance)
+                    .flatMap(attendanceRepository::save);
+            })
+            .map(this::toResponse);
+    }
+    
+    @Override
+    public Mono<Void> deleteAttendance(Long id) {
+        log.info("Deleting attendance: {}", id);
+        return attendanceRepository.deleteById(id);
     }
     
     @Override
@@ -99,39 +124,7 @@ public class AttendanceApplicationService implements
             .map(this::toResponse);
     }
     
-    @Override
-    public Mono<AttendanceResponse> updateAttendance(Long id, UpdateAttendanceCommand command) {
-        return attendanceRepository.findById(id)
-            .switchIfEmpty(Mono.error(new RuntimeException("Asistencia no encontrada con id: " + id)))
-            .flatMap(attendance -> {
-                if (command.getEstado() != null) {
-                    attendance.setEstado(command.getEstado());
-                }
-                if (command.getHoraLlegada() != null) {
-                    attendance.setHoraLlegada(command.getHoraLlegada());
-                }
-                if (command.getJustificacionNota() != null) {
-                    attendance.setJustificacionNota(command.getJustificacionNota());
-                }
-                if (command.getJustificacionFotoUrl() != null) {
-                    attendance.setJustificacionFotoUrl(command.getJustificacionFotoUrl());
-                }
-                attendance.setActualizadoEn(LocalDateTime.now());
-                attendance.setVersion(attendance.getVersion() + 1);
-                return attendanceRepository.save(attendance);
-            })
-            .map(this::toResponse);
-    }
-    
-    @Override
-    public Mono<Void> deleteAttendance(Long id) {
-        return attendanceRepository.findById(id)
-            .switchIfEmpty(Mono.error(new RuntimeException("Asistencia no encontrada con id: " + id)))
-            .flatMap(attendance -> attendanceRepository.deleteById(id));
-    }
-    
     private AttendanceResponse toResponse(Attendance attendance) {
-        AttendanceStatus status = AttendanceStatus.fromCode(attendance.getEstado());
         return AttendanceResponse.builder()
             .id(attendance.getId())
             .estudianteId(attendance.getEstudianteId())
@@ -141,7 +134,7 @@ public class AttendanceApplicationService implements
             .fecha(attendance.getFecha())
             .anioLectivo(attendance.getAnioLectivo())
             .estado(attendance.getEstado())
-            .estadoNombre(status.getDescription())
+            .estadoNombre(domainService.getStatusDescription(attendance.getEstado()))
             .horaLlegada(attendance.getHoraLlegada())
             .justificacionNota(attendance.getJustificacionNota())
             .justificacionFotoUrl(attendance.getJustificacionFotoUrl())
