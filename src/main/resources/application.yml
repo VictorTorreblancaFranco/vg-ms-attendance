@@ -102,3 +102,15 @@ springdoc:
   swagger-ui:
     path: /swagger-ui.html
     enabled: true
+# URLs de servicios externos
+schedule:
+  service:
+    url: ${SCHEDULE_SERVICE_URL:http://vg-ms-schedule:5083}
+
+enrollment:
+  service:
+    url: ${ENROLLMENT_SERVICE_URL:http://vg-ms-enrollment:5087}
+
+user:
+  service:
+    url: ${USER_SERVICE_URL:http://vg-ms-user:5082}

@@ -9,6 +9,8 @@ import com.vg.attendance.application.port.in.dto.AttendanceResponse;
 import com.vg.attendance.infrastructure.adapter.in.web.dto.AttendanceRequest;
 import com.vg.attendance.infrastructure.adapter.in.web.dto.AttendanceUpdateRequest;
 import com.vg.attendance.infrastructure.adapter.in.web.mapper.AttendanceWebMapper;
+import com.vg.attendance.infrastructure.adapter.out.client.ScheduleClient;
+import com.vg.attendance.infrastructure.adapter.out.client.dto.ScheduleResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -28,6 +30,7 @@ public class AttendanceController {
     private final GetAttendanceUseCase getUseCase;
     private final UpdateAttendanceUseCase updateUseCase;
     private final AttendanceWebMapper mapper;
+    private final ScheduleClient scheduleClient;
     
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
@@ -73,5 +76,15 @@ public class AttendanceController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public Mono<Void> deleteAttendance(@PathVariable Long id) {
         return updateUseCase.deleteAttendance(id);
+    }
+    
+    @GetMapping("/teacher/{teacherId}/today")
+    public Flux<ScheduleResponse> getTeacherTodayClasses(@PathVariable String teacherId) {
+        return scheduleClient.getTodayClassesByTeacher(teacherId);
+    }
+    
+    @GetMapping("/teacher/{teacherId}/schedule")
+    public Flux<ScheduleResponse> getTeacherSchedule(@PathVariable String teacherId) {
+        return scheduleClient.getClassesByTeacher(teacherId);
     }
 }
