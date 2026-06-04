@@ -13,7 +13,7 @@
     </parent>
 
     <groupId>com.vg</groupId>
-    <artifactId>vg-ms-attendance</artifactId>  <!-- CAMBIADO de task a attendance -->
+    <artifactId>vg-ms-attendance</artifactId>
     <version>0.0.1-SNAPSHOT</version>
     <name>vg-ms-attendance</name>
     <description>Microservicio de Asistencias - EduNova</description>
@@ -58,6 +58,11 @@
         <dependency>
             <groupId>io.github.resilience4j</groupId>
             <artifactId>resilience4j-spring-boot3</artifactId>
+            <version>2.2.0</version>
+        </dependency>
+        <dependency>
+            <groupId>io.github.resilience4j</groupId>
+            <artifactId>resilience4j-reactor</artifactId>
             <version>2.2.0</version>
         </dependency>
         <dependency>

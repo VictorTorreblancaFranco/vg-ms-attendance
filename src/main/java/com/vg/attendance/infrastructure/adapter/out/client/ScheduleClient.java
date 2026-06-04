@@ -1,23 +1,38 @@
 package com.vg.attendance.infrastructure.adapter.out.client;
 
 import com.vg.attendance.infrastructure.adapter.out.client.dto.ScheduleResponse;
-import lombok.RequiredArgsConstructor;
+import io.github.resilience4j.circuitbreaker.CircuitBreaker;
+import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry;
+import io.github.resilience4j.reactor.circuitbreaker.operator.CircuitBreakerOperator;
+import io.github.resilience4j.reactor.retry.RetryOperator;
+import io.github.resilience4j.retry.Retry;
+import io.github.resilience4j.retry.RetryRegistry;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Flux;
 
-import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
+import java.time.Duration;
 
 @Slf4j
 @Component
-@RequiredArgsConstructor
 public class ScheduleClient {
 
-    @Qualifier("scheduleWebClient")
     private final WebClient scheduleWebClient;
+    private final CircuitBreaker circuitBreaker;
+    private final Retry retry;
+
+    @Autowired
+    public ScheduleClient(@Qualifier("scheduleWebClient") WebClient scheduleWebClient,
+                          CircuitBreakerRegistry circuitBreakerRegistry,
+                          RetryRegistry retryRegistry) {
+        this.scheduleWebClient = scheduleWebClient;
+        this.circuitBreaker = circuitBreakerRegistry.circuitBreaker("scheduleService");
+        this.retry = retryRegistry.retry("scheduleService");
+        log.info("ScheduleClient initialized with CircuitBreaker and Retry");
+    }
 
     public Flux<ScheduleResponse> getTodayClassesByTeacher(String teacherId) {
         log.info("Obteniendo clases de hoy para el profesor: {}", teacherId);
@@ -25,10 +40,9 @@ public class ScheduleClient {
                 .uri("/schedules/today/teacher/{teacherId}", teacherId)
                 .retrieve()
                 .bodyToFlux(ScheduleResponse.class)
-                .onErrorResume(e -> {
-                    log.error("Error al obtener clases del profesor {}: {}", teacherId, e.getMessage());
-                    return Flux.empty();
-                });
+                .transformDeferred(CircuitBreakerOperator.of(circuitBreaker))
+                .transformDeferred(RetryOperator.of(retry))
+                .timeout(Duration.ofSeconds(10));
     }
 
     public Flux<ScheduleResponse> getClassesByTeacher(String teacherId) {
@@ -37,9 +51,8 @@ public class ScheduleClient {
                 .uri("/schedules/teacher/{teacherId}", teacherId)
                 .retrieve()
                 .bodyToFlux(ScheduleResponse.class)
-                .onErrorResume(e -> {
-                    log.error("Error al obtener clases del profesor {}: {}", teacherId, e.getMessage());
-                    return Flux.empty();
-                });
+                .transformDeferred(CircuitBreakerOperator.of(circuitBreaker))
+                .transformDeferred(RetryOperator.of(retry))
+                .timeout(Duration.ofSeconds(10));
     }
 }

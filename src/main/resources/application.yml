@@ -43,26 +43,9 @@ logging:
     max-history: 30
 
 cloudinary:
-  cloud-name: ${CLOUDINARY_CLOUD_NAME:dummy}
-  api-key: ${CLOUDINARY_API_KEY:dummy}
-  api-secret: ${CLOUDINARY_API_SECRET:dummy}
-
-resilience4j:
-  retry:
-    instances:
-      academicService:
-        max-attempts: 3
-        wait-duration: 1s
-        retry-exceptions:
-          - java.io.IOException
-          - org.springframework.web.reactive.function.client.WebClientResponseException$ServiceUnavailable
-  circuitbreaker:
-    instances:
-      academicService:
-        sliding-window-size: 10
-        failure-rate-threshold: 50
-        wait-duration-in-open-state: 30s
-        permitted-number-of-calls-in-half-open-state: 3
+  cloud-name: ${CLOUDINARY_CLOUD_NAME:doz1fu1er}
+  api-key: ${CLOUDINARY_API_KEY:295184475961158}
+  api-secret: ${CLOUDINARY_API_SECRET:H8HdnkN8NKdhZL-d75T1qIaOpyU}
 
 management:
   endpoints:
@@ -98,3 +81,8 @@ enrollment:
 user:
   service:
     url: ${USER_SERVICE_URL:http://vg-ms-user:5082}
+
+# Resilience4j logging
+logging.level.io.github.resilience4j: DEBUG
+logging.level.io.github.resilience4j.circuitbreaker: DEBUG
+logging.level.io.github.resilience4j.retry: DEBUG
