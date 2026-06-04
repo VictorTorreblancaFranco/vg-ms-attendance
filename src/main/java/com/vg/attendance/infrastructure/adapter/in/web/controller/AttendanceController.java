@@ -47,7 +47,6 @@ public class AttendanceController {
         
         log.info("Registrando asistencia - Teacher from gateway: {}", teacherIdFromGateway);
         
-        // Validar que el profesor que intenta registrar es el mismo del token
         if (!teacherIdFromGateway.equals(request.getProfesorId())) {
             return Mono.error(new RuntimeException("No puedes registrar asistencia para otro profesor"));
         }
@@ -72,9 +71,12 @@ public class AttendanceController {
     public Flux<EnrollmentResponse> getStudentsByClass(
             @PathVariable Long gradeId,
             @PathVariable Long sectionId,
-            @RequestParam Long yearId) {
+            @RequestParam Long yearId,
+            @RequestHeader(HttpHeaders.AUTHORIZATION) String authHeader) {
+        
+        String token = authHeader.substring(7);
         log.info("Obteniendo alumnos para grado: {}, sección: {}, año: {}", gradeId, sectionId, yearId);
-        return enrollmentClient.getStudentsByGradeSectionYear(gradeId, sectionId, yearId);
+        return enrollmentClient.getStudentsByGradeSectionYear(gradeId, sectionId, yearId, token);
     }
     
     @GetMapping("/{id}")

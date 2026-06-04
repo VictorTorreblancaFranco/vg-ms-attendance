@@ -19,10 +19,11 @@ public class EnrollmentClient {
         this.enrollmentWebClient = enrollmentWebClient;
     }
 
-    public Flux<EnrollmentResponse> getStudentsByGradeSectionYear(Long gradeId, Long sectionId, Long yearId) {
+    public Flux<EnrollmentResponse> getStudentsByGradeSectionYear(Long gradeId, Long sectionId, Long yearId, String token) {
         log.info("Obteniendo alumnos para grado: {}, sección: {}, año: {}", gradeId, sectionId, yearId);
         return enrollmentWebClient.get()
                 .uri("/api/enrollments/grade/{gradeId}/section/{sectionId}/year/{yearId}", gradeId, sectionId, yearId)
+                .header("Authorization", "Bearer " + token)
                 .retrieve()
                 .bodyToFlux(EnrollmentResponse.class)
                 .onErrorResume(e -> {
