@@ -1,5 +1,5 @@
 server:
-  port: ${SERVER_PORT:8085}
+  port: ${SERVER_PORT:5085}
   compression:
     enabled: true
     mime-types: application/json,application/xml,text/html,text/xml,text/plain,application/javascript,text/css
@@ -9,7 +9,6 @@ spring:
   application:
     name: vg-ms-attendance
 
-  # R2DBC para PostgreSQL Reactivo (con SSL)
   r2dbc:
     url: ${DB_URL:r2dbc:postgresql://ep-twilight-rain-aquzch63-pooler.c-8.us-east-1.aws.neon.tech/neondb?sslmode=require}
     username: ${DB_USERNAME:neondb_owner}
@@ -20,7 +19,6 @@ spring:
       max-idle-time: 30m
       max-life-time: 60m
 
-  # Flyway con JDBC (ya tiene SSL)
   flyway:
     enabled: true
     baseline-on-migrate: true
@@ -34,7 +32,6 @@ spring:
     caffeine:
       spec: expireAfterWrite=1h,maximumSize=100
 
-# Configuración de servicios externos (mocks por ahora)
 academic:
   url: ${ACADEMIC_SERVICE_URL:http://localhost:8080}
   timeout: 5000
@@ -61,9 +58,9 @@ logging:
     max-history: 30
 
 cloudinary:
-  cloud-name: ${CLOUDINARY_CLOUD_NAME:dummy}
-  api-key: ${CLOUDINARY_API_KEY:dummy}
-  api-secret: ${CLOUDINARY_API_SECRET:dummy}
+  cloud-name: ${CLOUDINARY_CLOUD_NAME:doz1fu1er}
+  api-key: ${CLOUDINARY_API_KEY:295184475961158}
+  api-secret: ${CLOUDINARY_API_SECRET:H8HdnkN8NKdhZL-d75T1qIaOpyU}
 
 resilience4j:
   retry:
@@ -102,7 +99,7 @@ springdoc:
   swagger-ui:
     path: /swagger-ui.html
     enabled: true
-# URLs de servicios externos
+
 schedule:
   service:
     url: ${SCHEDULE_SERVICE_URL:http://vg-ms-schedule:5083}
