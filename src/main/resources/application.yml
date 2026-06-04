@@ -8,7 +8,6 @@ server:
 spring:
   application:
     name: vg-ms-attendance
-
   r2dbc:
     url: ${DB_URL:r2dbc:postgresql://ep-twilight-rain-aquzch63-pooler.c-8.us-east-1.aws.neon.tech/neondb?sslmode=require}
     username: ${DB_USERNAME:neondb_owner}
@@ -18,7 +17,6 @@ spring:
       max-size: 10
       max-idle-time: 30m
       max-life-time: 60m
-
   flyway:
     enabled: true
     baseline-on-migrate: true
@@ -26,23 +24,10 @@ spring:
     url: ${FLYWAY_URL:jdbc:postgresql://ep-twilight-rain-aquzch63-pooler.c-8.us-east-1.aws.neon.tech/neondb?sslmode=require}
     user: ${DB_USERNAME:neondb_owner}
     password: ${DB_PASSWORD:npg_gevd5bEc4Gai}
-
   cache:
     type: caffeine
     caffeine:
       spec: expireAfterWrite=1h,maximumSize=100
-
-academic:
-  url: ${ACADEMIC_SERVICE_URL:http://localhost:8080}
-  timeout: 5000
-  mock:
-    enabled: ${ACADEMIC_MOCK_ENABLED:true}
-
-student:
-  url: ${STUDENT_SERVICE_URL:http://localhost:8081}
-  timeout: 5000
-  mock:
-    enabled: ${STUDENT_MOCK_ENABLED:true}
 
 logging:
   level:
@@ -58,9 +43,9 @@ logging:
     max-history: 30
 
 cloudinary:
-  cloud-name: ${CLOUDINARY_CLOUD_NAME:doz1fu1er}
-  api-key: ${CLOUDINARY_API_KEY:295184475961158}
-  api-secret: ${CLOUDINARY_API_SECRET:H8HdnkN8NKdhZL-d75T1qIaOpyU}
+  cloud-name: ${CLOUDINARY_CLOUD_NAME:dummy}
+  api-key: ${CLOUDINARY_API_KEY:dummy}
+  api-secret: ${CLOUDINARY_API_SECRET:dummy}
 
 resilience4j:
   retry:
@@ -99,6 +84,8 @@ springdoc:
   swagger-ui:
     path: /swagger-ui.html
     enabled: true
+    tryItOutEnabled: true
+    filter: true
 
 schedule:
   service:
