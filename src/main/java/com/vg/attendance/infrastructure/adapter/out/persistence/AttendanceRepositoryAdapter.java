@@ -49,4 +49,9 @@ public class AttendanceRepositoryAdapter implements AttendanceRepositoryPort {
     public Mono<Void> deleteById(Long id) {
         return repository.deleteById(id);
     }
+
+    @Override
+    public Flux<Attendance> findByFecha(LocalDate fecha) {
+        return repository.findByFecha(fecha);
+    }
 }

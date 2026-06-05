@@ -14,4 +14,5 @@ public interface AttendanceRepositoryPort {
     Flux<Attendance> findByEstudianteIdAndFechaBetween(String estudianteId, LocalDate startDate, LocalDate endDate);
     Mono<Boolean> existsByEstudianteIdAndClaseIdAndFecha(String estudianteId, String claseId, LocalDate fecha);
     Mono<Void> deleteById(Long id);
+    Flux<Attendance> findByFecha(LocalDate fecha);
 }

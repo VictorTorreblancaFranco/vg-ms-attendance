@@ -30,4 +30,23 @@ public class UserClient {
                     return Mono.empty();
                 });
     }
+
+    public Mono<UserResponse> getUserById(String userId, String token) {
+        log.info("Obteniendo usuario con token: {}", userId);
+        return userWebClient.get()
+                .uri("/api/users/{id}", userId)
+                .header("Authorization", "Bearer " + token)
+                .retrieve()
+                .bodyToMono(UserResponse.class)
+                .onErrorResume(e -> {
+                    log.error("Error al obtener usuario {}: {}", userId, e.getMessage());
+                    String shortId = userId.length() > 4 ? userId.substring(userId.length() - 4) : userId;
+                    UserResponse fallback = new UserResponse();
+                    fallback.setId(userId);
+                    fallback.setFirstName("Alumno");
+                    fallback.setLastName(shortId);
+                    fallback.setEmail("");
+                    return Mono.just(fallback);
+                });
+    }
 }
