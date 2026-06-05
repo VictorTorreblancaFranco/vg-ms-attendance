@@ -82,6 +82,12 @@ user:
   service:
     url: ${USER_SERVICE_URL:http://vg-ms-user:5082}
 
+# School information for reports
+school:
+  name: INSTITUCIÓN EDUCATIVA PÚBLICA MIXTO SAN LUIS
+  modular-code: 0286427
+  local-code: 354416
+
 # Resilience4j logging
 logging.level.io.github.resilience4j: DEBUG
 logging.level.io.github.resilience4j.circuitbreaker: DEBUG
