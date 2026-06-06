@@ -54,4 +54,9 @@ public class AttendanceRepositoryAdapter implements AttendanceRepositoryPort {
     public Flux<Attendance> findByFecha(LocalDate fecha) {
         return repository.findByFecha(fecha);
     }
+
+    @Override
+    public Flux<Attendance> findRecentAttendanceByStudent(String estudianteId) {
+        return repository.findTop30ByEstudianteIdOrderByFechaDesc(estudianteId);
+    }
 }

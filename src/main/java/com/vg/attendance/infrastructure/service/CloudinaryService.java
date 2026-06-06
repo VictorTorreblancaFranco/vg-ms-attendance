@@ -6,6 +6,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
 
 import java.io.IOException;
 import java.util.Map;
@@ -31,7 +32,7 @@ public class CloudinaryService {
                 log.error("Error uploading file to Cloudinary: {}", e.getMessage());
                 throw new RuntimeException("Error al subir el archivo: " + e.getMessage());
             }
-        });
+        }).subscribeOn(Schedulers.boundedElastic());
     }
 
     public Mono<String> deleteFile(String publicId) {
@@ -43,6 +44,6 @@ public class CloudinaryService {
                 log.error("Error deleting file from Cloudinary: {}", e.getMessage());
                 return "error";
             }
-        });
+        }).subscribeOn(Schedulers.boundedElastic());
     }
 }

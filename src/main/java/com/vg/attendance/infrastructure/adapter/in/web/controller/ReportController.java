@@ -7,6 +7,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 import com.lowagie.text.Document;
@@ -31,11 +32,13 @@ import org.springframework.core.io.ClassPathResource;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import lombok.extern.slf4j.Slf4j;
 import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
 
 @Slf4j
 @RestController
@@ -76,14 +79,14 @@ public class ReportController {
             .collectList()
             .flatMap(attendances -> {
                 if (attendances.isEmpty()) {
-                    return Mono.just(generarPdfError("No hay asistencias para esta clase en la fecha seleccionada"));
+                    return generatePdf(() -> generarPdfError("No hay asistencias para esta clase en la fecha seleccionada"));
                 }
                 return obtenerNombres(attendances, token)
-                    .map(nombres -> generarPdfClase(attendances, date, classId, nombres));
+                    .flatMap(nombres -> generatePdf(() -> generarPdfClase(attendances, date, classId, nombres)));
             })
             .onErrorResume(e -> {
                 log.error("Error: {}", e.getMessage());
-                return Mono.just(generarPdfError("Error generando reporte: " + e.getMessage()));
+                return generatePdf(() -> generarPdfError("Error generando reporte: " + e.getMessage()));
             });
     }
 
@@ -101,20 +104,20 @@ public class ReportController {
             .collectList()
             .flatMap(attendances -> {
                 if (attendances.isEmpty()) {
-                    return Mono.just(generarPdfError("No hay asistencias para este estudiante en el período seleccionado"));
+                    return generatePdf(() -> generarPdfError("No hay asistencias para este estudiante en el período seleccionado"));
                 }
                 return Mono.zip(
                     obtenerNombreEstudiante(studentId, token),
                     obtenerNombres(attendances, token)
-                ).map(tuple -> {
+                ).flatMap(tuple -> {
                     String nombre = tuple.getT1();
                     Map<String, String> nombres = tuple.getT2();
-                    return generarPdfEstudiante(attendances, studentId, nombre, startDate, endDate, nombres);
+                    return generatePdf(() -> generarPdfEstudiante(attendances, studentId, nombre, startDate, endDate, nombres));
                 });
             })
             .onErrorResume(e -> {
                 log.error("Error: {}", e.getMessage());
-                return Mono.just(generarPdfError("Error generando reporte: " + e.getMessage()));
+                return generatePdf(() -> generarPdfError("Error generando reporte: " + e.getMessage()));
             });
     }
 
@@ -130,15 +133,20 @@ public class ReportController {
             .collectList()
             .flatMap(attendances -> {
                 if (attendances.isEmpty()) {
-                    return Mono.just(generarPdfError("No hay asistencias registradas para esta fecha"));
+                    return generatePdf(() -> generarPdfError("No hay asistencias registradas para esta fecha"));
                 }
                 return obtenerNombres(attendances, token)
-                    .map(nombres -> generarPdfDiario(attendances, date, nombres));
+                    .flatMap(nombres -> generatePdf(() -> generarPdfDiario(attendances, date, nombres)));
             })
             .onErrorResume(e -> {
                 log.error("Error: {}", e.getMessage());
-                return Mono.just(generarPdfError("Error generando reporte: " + e.getMessage()));
+                return generatePdf(() -> generarPdfError("Error generando reporte: " + e.getMessage()));
             });
+    }
+
+    private Mono<ResponseEntity<byte[]>> generatePdf(Supplier<ResponseEntity<byte[]>> generator) {
+        return Mono.fromCallable(generator::get)
+            .subscribeOn(Schedulers.boundedElastic());
     }
 
     private Mono<Map<String, String>> obtenerNombres(List<Attendance> attendances, String token) {
@@ -181,6 +189,7 @@ public class ReportController {
             doc.add(new Paragraph(mensaje));
             doc.close();
             return ResponseEntity.ok()
+                    .contentType(MediaType.APPLICATION_PDF)
                     .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=error.pdf")
                     .body(out.toByteArray());
         } catch (Exception e) {
@@ -315,6 +324,7 @@ public class ReportController {
             doc.close();
 
             return ResponseEntity.ok()
+                    .contentType(MediaType.APPLICATION_PDF)
                     .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=reporte_clase_" + classId + "_" + date + ".pdf")
                     .body(out.toByteArray());
         } catch (Exception e) {
@@ -447,6 +457,7 @@ public class ReportController {
             doc.close();
 
             return ResponseEntity.ok()
+                    .contentType(MediaType.APPLICATION_PDF)
                     .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=reporte_estudiante_" + studentId + ".pdf")
                     .body(out.toByteArray());
         } catch (Exception e) {
@@ -567,6 +578,7 @@ public class ReportController {
             doc.close();
 
             return ResponseEntity.ok()
+                    .contentType(MediaType.APPLICATION_PDF)
                     .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=reporte_diario_" + date + ".pdf")
                     .body(out.toByteArray());
         } catch (Exception e) {

@@ -2,6 +2,7 @@ package com.vg.attendance.infrastructure.adapter.in.web.dto;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -35,6 +36,7 @@ public class AttendanceRequest {
     private Integer anioLectivo;
     
     @NotBlank
+    @Pattern(regexp = "A|F|T|J", message = "El estado debe ser A, F, T o J")
     private String estado;
     
     private LocalTime horaLlegada;

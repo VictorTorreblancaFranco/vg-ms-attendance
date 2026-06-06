@@ -7,6 +7,8 @@ import com.vg.attendance.application.port.in.command.RegisterAttendanceCommand;
 import com.vg.attendance.application.port.in.command.UpdateAttendanceCommand;
 import com.vg.attendance.application.port.in.dto.AttendanceResponse;
 import com.vg.attendance.application.port.out.AttendanceRepositoryPort;
+import com.vg.attendance.domain.exception.ConflictException;
+import com.vg.attendance.domain.exception.NotFoundException;
 import com.vg.attendance.domain.model.Attendance;
 import com.vg.attendance.domain.service.AttendanceDomainService;
 import lombok.RequiredArgsConstructor;
@@ -39,7 +41,7 @@ public class AttendanceApplicationService implements
                 command.getEstudianteId(), command.getClaseId(), command.getFecha())
             .flatMap(exists -> {
                 if (exists) {
-                    return Mono.error(new RuntimeException("Ya existe un registro de asistencia para este estudiante en esta clase en esta fecha"));
+                    return Mono.error(new ConflictException("Ya existe un registro de asistencia para este estudiante en esta clase en esta fecha"));
                 }
                 
                 Attendance attendance = Attendance.builder()
@@ -70,7 +72,7 @@ public class AttendanceApplicationService implements
         log.info("Updating attendance: {}", id);
         
         return attendanceRepository.findById(id)
-            .switchIfEmpty(Mono.error(new RuntimeException("Asistencia no encontrada con id: " + id)))
+            .switchIfEmpty(Mono.error(new NotFoundException("Asistencia no encontrada con id: " + id)))
             .flatMap(attendance -> {
                 if (command.getEstado() != null) {
                     attendance.setEstado(command.getEstado());
@@ -85,7 +87,7 @@ public class AttendanceApplicationService implements
                     attendance.setJustificacionFotoUrl(command.getJustificacionFotoUrl());
                 }
                 attendance.setActualizadoEn(LocalDateTime.now());
-                attendance.setVersion(attendance.getVersion() + 1);
+                attendance.setVersion(attendance.getVersion() == null ? 1 : attendance.getVersion() + 1);
                 
                 return domainService.validateAttendance(attendance)
                     .flatMap(attendanceRepository::save);
@@ -96,13 +98,15 @@ public class AttendanceApplicationService implements
     @Override
     public Mono<Void> deleteAttendance(Long id) {
         log.info("Deleting attendance: {}", id);
-        return attendanceRepository.deleteById(id);
+        return attendanceRepository.findById(id)
+            .switchIfEmpty(Mono.error(new NotFoundException("Asistencia no encontrada con id: " + id)))
+            .then(attendanceRepository.deleteById(id));
     }
     
     @Override
     public Mono<AttendanceResponse> getAttendanceById(Long id) {
         return attendanceRepository.findById(id)
-            .switchIfEmpty(Mono.error(new RuntimeException("Asistencia no encontrada con id: " + id)))
+            .switchIfEmpty(Mono.error(new NotFoundException("Asistencia no encontrada con id: " + id)))
             .map(this::toResponse);
     }
     

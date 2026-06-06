@@ -1,5 +1,6 @@
 package com.vg.attendance.domain.service.impl;
 
+import com.vg.attendance.domain.exception.BusinessException;
 import com.vg.attendance.domain.model.Attendance;
 import com.vg.attendance.domain.service.AttendanceDomainService;
 import com.vg.attendance.domain.valueobject.AttendanceStatus;
@@ -16,11 +17,12 @@ public class AttendanceDomainServiceImpl implements AttendanceDomainService {
         AttendanceStatus status = AttendanceStatus.fromCode(attendance.getEstado());
         
         if (status == AttendanceStatus.TARDANZA && attendance.getHoraLlegada() == null) {
-            return Mono.error(new IllegalArgumentException("La tardanza requiere hora de llegada"));
+            return Mono.error(new BusinessException("La tardanza requiere hora de llegada"));
         }
         
-        if (status == AttendanceStatus.JUSTIFICADO && attendance.getJustificacionNota() == null) {
-            return Mono.error(new IllegalArgumentException("La justificación requiere una nota"));
+        if (status == AttendanceStatus.JUSTIFICADO &&
+                (attendance.getJustificacionNota() == null || attendance.getJustificacionNota().isBlank())) {
+            return Mono.error(new BusinessException("La justificación requiere una nota"));
         }
         
         return Mono.just(attendance);

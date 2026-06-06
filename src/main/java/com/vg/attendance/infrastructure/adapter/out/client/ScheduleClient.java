@@ -34,25 +34,29 @@ public class ScheduleClient {
         log.info("ScheduleClient initialized with CircuitBreaker and Retry");
     }
 
-    public Flux<ScheduleResponse> getTodayClassesByTeacher(String teacherId) {
+    public Flux<ScheduleResponse> getTodayClassesByTeacher(String teacherId, String authHeader) {
         log.info("Obteniendo clases de hoy para el profesor: {}", teacherId);
         return scheduleWebClient.get()
                 .uri("/schedules/today/teacher/{teacherId}", teacherId)
+                .header("Authorization", authHeader)
                 .retrieve()
                 .bodyToFlux(ScheduleResponse.class)
                 .transformDeferred(CircuitBreakerOperator.of(circuitBreaker))
                 .transformDeferred(RetryOperator.of(retry))
-                .timeout(Duration.ofSeconds(10));
+                .timeout(Duration.ofSeconds(10))
+                .onErrorMap(e -> new RuntimeException("Servicio no disponible por el momento, intente más tarde", e));
     }
 
-    public Flux<ScheduleResponse> getClassesByTeacher(String teacherId) {
+    public Flux<ScheduleResponse> getClassesByTeacher(String teacherId, String authHeader) {
         log.info("Obteniendo todas las clases del profesor: {}", teacherId);
         return scheduleWebClient.get()
                 .uri("/schedules/teacher/{teacherId}", teacherId)
+                .header("Authorization", authHeader)
                 .retrieve()
                 .bodyToFlux(ScheduleResponse.class)
                 .transformDeferred(CircuitBreakerOperator.of(circuitBreaker))
                 .transformDeferred(RetryOperator.of(retry))
-                .timeout(Duration.ofSeconds(10));
+                .timeout(Duration.ofSeconds(10))
+                .onErrorMap(e -> new RuntimeException("Servicio no disponible por el momento, intente más tarde", e));
     }
 }

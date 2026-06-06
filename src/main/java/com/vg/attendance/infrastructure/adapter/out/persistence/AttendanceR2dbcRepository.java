@@ -19,6 +19,8 @@ public interface AttendanceR2dbcRepository extends R2dbcRepository<Attendance, L
     Flux<Attendance> findByEstudianteIdAndFechaBetween(String estudianteId, LocalDate startDate, LocalDate endDate);
     
     Flux<Attendance> findByFecha(LocalDate fecha);
+
+    Flux<Attendance> findTop30ByEstudianteIdOrderByFechaDesc(String estudianteId);
     
     @Query("SELECT EXISTS(SELECT 1 FROM asistencias WHERE estudiante_id = $1 AND clase_id = $2 AND fecha = $3)")
     Mono<Boolean> existsByEstudianteIdAndClaseIdAndFecha(String estudianteId, String claseId, LocalDate fecha);

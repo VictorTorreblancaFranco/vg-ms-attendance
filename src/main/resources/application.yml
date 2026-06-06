@@ -9,21 +9,14 @@ spring:
   application:
     name: vg-ms-attendance
   r2dbc:
-    url: ${DB_URL:r2dbc:postgresql://ep-twilight-rain-aquzch63-pooler.c-8.us-east-1.aws.neon.tech/neondb?sslmode=require}
-    username: ${DB_USERNAME:neondb_owner}
-    password: ${DB_PASSWORD:npg_gevd5bEc4Gai}
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
     pool:
       initial-size: 2
       max-size: 10
       max-idle-time: 30m
       max-life-time: 60m
-  flyway:
-    enabled: true
-    baseline-on-migrate: true
-    locations: classpath:db/migration
-    url: ${FLYWAY_URL:jdbc:postgresql://ep-twilight-rain-aquzch63-pooler.c-8.us-east-1.aws.neon.tech/neondb?sslmode=require}
-    user: ${DB_USERNAME:neondb_owner}
-    password: ${DB_PASSWORD:npg_gevd5bEc4Gai}
   cache:
     type: caffeine
     caffeine:
@@ -43,9 +36,9 @@ logging:
     max-history: 30
 
 cloudinary:
-  cloud-name: ${CLOUDINARY_CLOUD_NAME:doz1fu1er}
-  api-key: ${CLOUDINARY_API_KEY:295184475961158}
-  api-secret: ${CLOUDINARY_API_SECRET:H8HdnkN8NKdhZL-d75T1qIaOpyU}
+  cloud-name: ${CLOUDINARY_CLOUD_NAME}
+  api-key: ${CLOUDINARY_API_KEY}
+  api-secret: ${CLOUDINARY_API_SECRET}
 
 management:
   endpoints:
@@ -92,3 +85,33 @@ school:
 logging.level.io.github.resilience4j: DEBUG
 logging.level.io.github.resilience4j.circuitbreaker: DEBUG
 logging.level.io.github.resilience4j.retry: DEBUG
+
+resilience4j:
+  circuitbreaker:
+    instances:
+      scheduleService:
+        sliding-window-size: 10
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 10s
+        permitted-number-of-calls-in-half-open-state: 3
+      enrollmentService:
+        sliding-window-size: 10
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 10s
+        permitted-number-of-calls-in-half-open-state: 3
+      userService:
+        sliding-window-size: 10
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 10s
+        permitted-number-of-calls-in-half-open-state: 3
+  retry:
+    instances:
+      scheduleService:
+        max-attempts: 3
+        wait-duration: 1s
+      enrollmentService:
+        max-attempts: 3
+        wait-duration: 1s
+      userService:
+        max-attempts: 3
+        wait-duration: 1s

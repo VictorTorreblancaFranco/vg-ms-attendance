@@ -43,11 +43,13 @@ public class AttendanceController {
     public Mono<AttendanceResponse> registerAttendance(
             @Valid @RequestBody AttendanceRequest request,
             @RequestHeader(HttpHeaders.AUTHORIZATION) String authHeader,
-            @RequestHeader("X-User-Id") String teacherIdFromGateway) {
+            @RequestHeader("X-User-Id") String teacherIdFromGateway,
+            @RequestHeader(value = "X-User-Role", required = false) String roleFromGateway) {
         
-        log.info("Registrando asistencia - Teacher from gateway: {}", teacherIdFromGateway);
+        log.info("Registrando asistencia - User from gateway: {}, role: {}", teacherIdFromGateway, roleFromGateway);
         
-        if (!teacherIdFromGateway.equals(request.getProfesorId())) {
+        boolean isDirectorOrAdmin = "DIRECTOR".equals(roleFromGateway) || "ADMIN".equals(roleFromGateway);
+        if (!isDirectorOrAdmin && !teacherIdFromGateway.equals(request.getProfesorId())) {
             return Mono.error(new RuntimeException("No puedes registrar asistencia para otro profesor"));
         }
         
@@ -56,15 +58,19 @@ public class AttendanceController {
     }
     
     @GetMapping("/teacher/{teacherId}/today")
-    public Flux<ScheduleResponse> getTeacherTodayClasses(@PathVariable String teacherId) {
+    public Flux<ScheduleResponse> getTeacherTodayClasses(
+            @PathVariable String teacherId,
+            @RequestHeader(HttpHeaders.AUTHORIZATION) String authHeader) {
         log.info("Obteniendo clases de hoy para profesor: {}", teacherId);
-        return scheduleClient.getTodayClassesByTeacher(teacherId);
+        return scheduleClient.getTodayClassesByTeacher(teacherId, authHeader);
     }
     
     @GetMapping("/teacher/{teacherId}/schedule")
-    public Flux<ScheduleResponse> getTeacherSchedule(@PathVariable String teacherId) {
+    public Flux<ScheduleResponse> getTeacherSchedule(
+            @PathVariable String teacherId,
+            @RequestHeader(HttpHeaders.AUTHORIZATION) String authHeader) {
         log.info("Obteniendo horario completo del profesor: {}", teacherId);
-        return scheduleClient.getClassesByTeacher(teacherId);
+        return scheduleClient.getClassesByTeacher(teacherId, authHeader);
     }
     
     @GetMapping("/class/{gradeId}/{sectionId}/students")
