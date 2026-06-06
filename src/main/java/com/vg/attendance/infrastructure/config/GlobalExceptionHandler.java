@@ -2,6 +2,7 @@ package com.vg.attendance.infrastructure.config;
 
 import com.vg.attendance.domain.exception.BusinessException;
 import com.vg.attendance.domain.exception.ConflictException;
+import com.vg.attendance.domain.exception.ForbiddenException;
 import com.vg.attendance.domain.exception.NotFoundException;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.support.WebExchangeBindException;
@@ -26,6 +27,12 @@ public class GlobalExceptionHandler {
     @ResponseStatus(HttpStatus.CONFLICT)
     public Mono<Map<String, Object>> handleConflictException(ConflictException ex) {
         return errorResponse(ex.getMessage(), HttpStatus.CONFLICT);
+    }
+
+    @ExceptionHandler(ForbiddenException.class)
+    @ResponseStatus(HttpStatus.FORBIDDEN)
+    public Mono<Map<String, Object>> handleForbiddenException(ForbiddenException ex) {
+        return errorResponse(ex.getMessage(), HttpStatus.FORBIDDEN);
     }
 
     @ExceptionHandler({BusinessException.class, IllegalArgumentException.class, WebExchangeBindException.class})

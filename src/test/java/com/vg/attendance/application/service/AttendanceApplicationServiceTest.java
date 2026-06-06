@@ -3,6 +3,7 @@ package com.vg.attendance.application.service;
 import com.vg.attendance.application.port.in.command.RegisterAttendanceCommand;
 import com.vg.attendance.application.port.in.command.UpdateAttendanceCommand;
 import com.vg.attendance.application.port.out.AttendanceRepositoryPort;
+import com.vg.attendance.domain.exception.BusinessException;
 import com.vg.attendance.domain.exception.ConflictException;
 import com.vg.attendance.domain.exception.NotFoundException;
 import com.vg.attendance.domain.model.Attendance;
@@ -92,6 +93,16 @@ class AttendanceApplicationServiceTest {
     void deleteAttendanceReturnsNotFoundWhenRecordDoesNotExist() {
         StepVerifier.create(service.deleteAttendance(404L))
             .expectError(NotFoundException.class)
+            .verify();
+    }
+
+    @Test
+    void getAttendanceByDateRangeRejectsInvalidRange() {
+        StepVerifier.create(service.getAttendanceByDateRange(
+                "student-1",
+                LocalDate.of(2026, 6, 10),
+                LocalDate.of(2026, 6, 5)))
+            .expectError(BusinessException.class)
             .verify();
     }
 

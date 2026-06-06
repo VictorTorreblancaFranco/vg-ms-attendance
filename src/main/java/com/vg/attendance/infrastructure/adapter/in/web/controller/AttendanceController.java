@@ -6,6 +6,8 @@ import com.vg.attendance.application.port.in.UpdateAttendanceUseCase;
 import com.vg.attendance.application.port.in.command.RegisterAttendanceCommand;
 import com.vg.attendance.application.port.in.command.UpdateAttendanceCommand;
 import com.vg.attendance.application.port.in.dto.AttendanceResponse;
+import com.vg.attendance.domain.exception.BusinessException;
+import com.vg.attendance.domain.exception.ForbiddenException;
 import com.vg.attendance.infrastructure.adapter.in.web.dto.AttendanceRequest;
 import com.vg.attendance.infrastructure.adapter.in.web.dto.AttendanceUpdateRequest;
 import com.vg.attendance.infrastructure.adapter.in.web.mapper.AttendanceWebMapper;
@@ -48,10 +50,11 @@ public class AttendanceController {
         
         log.info("Registrando asistencia - User from gateway: {}, role: {}", teacherIdFromGateway, roleFromGateway);
         
-        boolean isDirectorOrAdmin = "DIRECTOR".equals(roleFromGateway) || "ADMIN".equals(roleFromGateway);
-        if (!isDirectorOrAdmin && !teacherIdFromGateway.equals(request.getProfesorId())) {
-            return Mono.error(new RuntimeException("No puedes registrar asistencia para otro profesor"));
+        if (!isDirectorOrAdmin(roleFromGateway) && !teacherIdFromGateway.equals(request.getProfesorId())) {
+            return Mono.error(new ForbiddenException("No puedes registrar asistencia para otro profesor"));
         }
+
+        request.setRegistradoPor(teacherIdFromGateway);
         
         RegisterAttendanceCommand command = mapper.toCommand(request);
         return registerUseCase.registerAttendance(command);
@@ -60,16 +63,22 @@ public class AttendanceController {
     @GetMapping("/teacher/{teacherId}/today")
     public Flux<ScheduleResponse> getTeacherTodayClasses(
             @PathVariable String teacherId,
-            @RequestHeader(HttpHeaders.AUTHORIZATION) String authHeader) {
+            @RequestHeader(HttpHeaders.AUTHORIZATION) String authHeader,
+            @RequestHeader("X-User-Id") String userId,
+            @RequestHeader(value = "X-User-Role", required = false) String role) {
         log.info("Obteniendo clases de hoy para profesor: {}", teacherId);
+        validateTeacherAccess(teacherId, userId, role);
         return scheduleClient.getTodayClassesByTeacher(teacherId, authHeader);
     }
     
     @GetMapping("/teacher/{teacherId}/schedule")
     public Flux<ScheduleResponse> getTeacherSchedule(
             @PathVariable String teacherId,
-            @RequestHeader(HttpHeaders.AUTHORIZATION) String authHeader) {
+            @RequestHeader(HttpHeaders.AUTHORIZATION) String authHeader,
+            @RequestHeader("X-User-Id") String userId,
+            @RequestHeader(value = "X-User-Role", required = false) String role) {
         log.info("Obteniendo horario completo del profesor: {}", teacherId);
+        validateTeacherAccess(teacherId, userId, role);
         return scheduleClient.getClassesByTeacher(teacherId, authHeader);
     }
     
@@ -107,20 +116,56 @@ public class AttendanceController {
             @PathVariable String estudianteId,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
+        validateDateRange(startDate, endDate);
         return getUseCase.getAttendanceByDateRange(estudianteId, startDate, endDate);
     }
     
     @PutMapping("/{id}")
     public Mono<AttendanceResponse> updateAttendance(
             @PathVariable Long id,
-            @Valid @RequestBody AttendanceUpdateRequest request) {
+            @Valid @RequestBody AttendanceUpdateRequest request,
+            @RequestHeader("X-User-Id") String userId,
+            @RequestHeader(value = "X-User-Role", required = false) String role) {
         UpdateAttendanceCommand command = mapper.toCommand(request);
-        return updateUseCase.updateAttendance(id, command);
+        return getUseCase.getAttendanceById(id)
+                .doOnNext(attendance -> validateAttendanceMutationAccess(attendance, userId, role))
+                .then(updateUseCase.updateAttendance(id, command));
     }
     
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public Mono<Void> deleteAttendance(@PathVariable Long id) {
-        return updateUseCase.deleteAttendance(id);
+    public Mono<Void> deleteAttendance(
+            @PathVariable Long id,
+            @RequestHeader("X-User-Id") String userId,
+            @RequestHeader(value = "X-User-Role", required = false) String role) {
+        return getUseCase.getAttendanceById(id)
+                .doOnNext(attendance -> validateAttendanceMutationAccess(attendance, userId, role))
+                .then(updateUseCase.deleteAttendance(id));
+    }
+
+    private void validateTeacherAccess(String teacherId, String userId, String role) {
+        if (!isDirectorOrAdmin(role) && !teacherId.equals(userId)) {
+            throw new ForbiddenException("No puedes consultar clases de otro profesor");
+        }
+    }
+
+    private void validateAttendanceMutationAccess(AttendanceResponse attendance, String userId, String role) {
+        if (isDirectorOrAdmin(role)) {
+            return;
+        }
+
+        if (!userId.equals(attendance.getProfesorId()) && !userId.equals(attendance.getRegistradoPor())) {
+            throw new ForbiddenException("No puedes modificar asistencias de otro profesor");
+        }
+    }
+
+    private void validateDateRange(LocalDate startDate, LocalDate endDate) {
+        if (startDate.isAfter(endDate)) {
+            throw new BusinessException("La fecha de inicio no puede ser posterior a la fecha de fin");
+        }
+    }
+
+    private boolean isDirectorOrAdmin(String role) {
+        return "DIRECTOR".equals(role) || "ADMIN".equals(role);
     }
 }

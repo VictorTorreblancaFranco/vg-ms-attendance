@@ -7,6 +7,7 @@ import com.vg.attendance.application.port.in.command.RegisterAttendanceCommand;
 import com.vg.attendance.application.port.in.command.UpdateAttendanceCommand;
 import com.vg.attendance.application.port.in.dto.AttendanceResponse;
 import com.vg.attendance.application.port.out.AttendanceRepositoryPort;
+import com.vg.attendance.domain.exception.BusinessException;
 import com.vg.attendance.domain.exception.ConflictException;
 import com.vg.attendance.domain.exception.NotFoundException;
 import com.vg.attendance.domain.model.Attendance;
@@ -124,6 +125,10 @@ public class AttendanceApplicationService implements
     
     @Override
     public Flux<AttendanceResponse> getAttendanceByDateRange(String estudianteId, LocalDate startDate, LocalDate endDate) {
+        if (startDate.isAfter(endDate)) {
+            return Flux.error(new BusinessException("La fecha de inicio no puede ser posterior a la fecha de fin"));
+        }
+
         return attendanceRepository.findByEstudianteIdAndFechaBetween(estudianteId, startDate, endDate)
             .map(this::toResponse);
     }
