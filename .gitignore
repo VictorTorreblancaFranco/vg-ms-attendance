@@ -32,8 +32,7 @@ build/
 ### VS Code ###
 .vscode/
 
-# Environment variables
-.env
+# Environment variables (línea .env ELIMINADA)
 .env.local
 .env.*.local
 *.csv
