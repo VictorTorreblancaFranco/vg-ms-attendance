@@ -166,6 +166,6 @@ public class AttendanceController {
     }
 
     private boolean isDirectorOrAdmin(String role) {
-        return "DIRECTOR".equals(role) || "ADMIN".equals(role);
+        return "DEVELOPER".equals(role) || "DIRECTOR".equals(role) || "ADMIN".equals(role);
     }
 }

@@ -7,16 +7,16 @@ server:
 
 spring:
   application:
-    name: vg-ms-attendance
+    name: ${SPRING_APP_NAME:vg-ms-attendance}
   r2dbc:
-    url: ${DB_URL}
-    username: ${DB_USERNAME}
-    password: ${DB_PASSWORD}
+    url: ${DB_URL:r2dbc:postgresql://ep-twilight-rain-aquzch63-pooler.c-8.us-east-1.aws.neon.tech/neondb?sslmode=require}
+    username: ${DB_USERNAME:neondb_owner}
+    password: ${DB_PASSWORD:npg_gevd5bEc4Gai}
     pool:
-      initial-size: 2
-      max-size: 10
-      max-idle-time: 30m
-      max-life-time: 60m
+      initial-size: ${SPRING_R2DBC_POOL_INITIAL_SIZE:2}
+      max-size: ${SPRING_R2DBC_POOL_MAX_SIZE:10}
+      max-idle-time: ${SPRING_R2DBC_POOL_MAX_IDLE_TIME:30m}
+      max-life-time: ${SPRING_R2DBC_POOL_MAX_LIFE_TIME:60m}
   cache:
     type: caffeine
     caffeine:
@@ -24,21 +24,21 @@ spring:
 
 logging:
   level:
-    root: INFO
-    com.vg.attendance: DEBUG
-    org.springframework.r2dbc: INFO
-    io.r2dbc.postgresql: INFO
+    root: ${LOG_ROOT_LEVEL:INFO}
+    com.vg.attendance: ${LOG_ATTENDANCE_LEVEL:DEBUG}
+    org.springframework.r2dbc: ${LOG_R2DBC_LEVEL:INFO}
+    io.r2dbc.postgresql: ${LOG_POSTGRESQL_LEVEL:INFO}
   pattern:
     console: '%d{yyyy-MM-dd HH:mm:ss.SSS} - %level - [%thread] - %logger{36} - %msg%n'
   file:
-    name: logs/attendance-service.log
-    max-size: 10MB
-    max-history: 30
+    name: ${LOG_FILE_NAME:logs/attendance-service.log}
+    max-size: ${LOG_FILE_MAX_SIZE:10MB}
+    max-history: ${LOG_FILE_MAX_HISTORY:30}
 
 cloudinary:
-  cloud-name: ${CLOUDINARY_CLOUD_NAME}
-  api-key: ${CLOUDINARY_API_KEY}
-  api-secret: ${CLOUDINARY_API_SECRET}
+  cloud-name: ${CLOUDINARY_CLOUD_NAME:doz1fu1er}
+  api-key: ${CLOUDINARY_API_KEY:295184475961158}
+  api-secret: ${CLOUDINARY_API_SECRET:H8HdnkN8NKdhZL-d75T1qIaOpyU}
 
 management:
   endpoints:
@@ -77,9 +77,9 @@ user:
 
 # School information for reports
 school:
-  name: INSTITUCIÓN EDUCATIVA PÚBLICA MIXTO SAN LUIS
-  modular-code: 0286427
-  local-code: 354416
+  name: ${SCHOOL_NAME:INSTITUCIÓN EDUCATIVA PÚBLICA MIXTO SAN LUIS}
+  modular-code: ${SCHOOL_MODULAR_CODE:0286427}
+  local-code: ${SCHOOL_LOCAL_CODE:354416}
 
 # Resilience4j logging
 logging.level.io.github.resilience4j: DEBUG
