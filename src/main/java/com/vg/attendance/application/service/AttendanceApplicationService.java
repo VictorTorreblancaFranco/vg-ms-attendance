@@ -126,6 +126,12 @@ public class AttendanceApplicationService implements
         return attendanceRepository.findByClaseIdAndFecha(claseId, fecha)
             .map(this::toResponse);
     }
+
+    @Override
+    public Flux<AttendanceResponse> getAttendanceByDate(LocalDate fecha) {
+        return attendanceRepository.findByFecha(fecha)
+            .map(this::toResponse);
+    }
     
     @Override
     public Flux<AttendanceResponse> getAttendanceByDateRange(String estudianteId, LocalDate startDate, LocalDate endDate) {

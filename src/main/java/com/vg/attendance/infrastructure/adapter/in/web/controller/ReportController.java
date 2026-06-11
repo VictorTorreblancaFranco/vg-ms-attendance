@@ -6,6 +6,7 @@ import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
@@ -22,6 +23,7 @@ import com.lowagie.text.pdf.PdfPTable;
 import com.lowagie.text.pdf.PdfWriter;
 import com.vg.attendance.application.port.out.AttendanceRepositoryPort;
 import com.vg.attendance.domain.model.Attendance;
+import com.vg.attendance.infrastructure.adapter.out.client.AcademicClient;
 import com.vg.attendance.infrastructure.adapter.out.client.ScheduleClient;
 import com.vg.attendance.infrastructure.adapter.out.client.UserClient;
 import com.vg.attendance.infrastructure.adapter.out.client.dto.ScheduleResponse;
@@ -37,6 +39,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import lombok.extern.slf4j.Slf4j;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 
@@ -48,6 +51,7 @@ public class ReportController {
     private final AttendanceRepositoryPort attendanceRepository;
     private final UserClient userClient;
     private final ScheduleClient scheduleClient;
+    private final AcademicClient academicClient;
 
     @Value("${school.name:INSTITUCIÓN EDUCATIVA PÚBLICA MIXTO SAN LUIS}")
     private String schoolName;
@@ -60,10 +64,12 @@ public class ReportController {
 
     public ReportController(AttendanceRepositoryPort attendanceRepository, 
                             UserClient userClient,
-                            ScheduleClient scheduleClient) {
+                            ScheduleClient scheduleClient,
+                            AcademicClient academicClient) {
         this.attendanceRepository = attendanceRepository;
         this.userClient = userClient;
         this.scheduleClient = scheduleClient;
+        this.academicClient = academicClient;
     }
 
     @GetMapping("/class/{classId}")
@@ -135,8 +141,11 @@ public class ReportController {
                 if (attendances.isEmpty()) {
                     return generatePdf(() -> generarPdfError("No hay asistencias registradas para esta fecha"));
                 }
-                return obtenerNombres(attendances, token)
-                    .flatMap(nombres -> generatePdf(() -> generarPdfDiario(attendances, date, nombres)));
+                return Mono.zip(
+                        obtenerNombres(attendances, token),
+                        obtenerNombresClases(attendances, authHeader)
+                    )
+                    .flatMap(tuple -> generatePdf(() -> generarPdfDiario(attendances, date, tuple.getT1(), tuple.getT2())));
             })
             .onErrorResume(e -> {
                 log.error("Error: {}", e.getMessage());
@@ -178,6 +187,50 @@ public class ReportController {
         return userClient.getUserById(studentId, token)
             .map(user -> user.getFirstName() + " " + user.getLastName())
             .defaultIfEmpty(studentId);
+    }
+
+    private Mono<Map<String, String>> obtenerNombresClases(List<Attendance> attendances, String authHeader) {
+        Set<String> classIds = attendances.stream()
+            .map(Attendance::getClaseId)
+            .collect(Collectors.toSet());
+
+        Set<String> teacherIds = attendances.stream()
+            .map(Attendance::getProfesorId)
+            .collect(Collectors.toSet());
+
+        if (classIds.isEmpty() || teacherIds.isEmpty()) {
+            return Mono.just(Map.of());
+        }
+
+        return Flux.fromIterable(teacherIds)
+            .flatMap(teacherId -> scheduleClient.getClassesByTeacher(teacherId, authHeader)
+                .onErrorResume(error -> {
+                    log.warn("No se pudieron obtener clases del profesor {}: {}", teacherId, error.getMessage());
+                    return Flux.empty();
+                }))
+            .filter(schedule -> schedule.getId() != null && classIds.contains(schedule.getId().toString()))
+            .collectMap(schedule -> schedule.getId().toString(), ScheduleResponse::getCourseId)
+            .flatMap(classCourseIds -> {
+                if (classCourseIds.isEmpty()) {
+                    return Mono.just(Map.of());
+                }
+
+                Set<Long> courseIds = classCourseIds.values().stream()
+                    .filter(id -> id != null)
+                    .collect(Collectors.toSet());
+
+                return Flux.fromIterable(courseIds)
+                    .flatMap(courseId -> academicClient.getCourseById(courseId)
+                        .filter(course -> course.getName() != null && !course.getName().isBlank())
+                        .map(course -> Map.entry(courseId, course.getName().trim()))
+                        .onErrorResume(error -> Mono.empty()))
+                    .collectMap(Map.Entry::getKey, Map.Entry::getValue)
+                    .map(courseNames -> classCourseIds.entrySet().stream()
+                        .collect(Collectors.toMap(
+                            Map.Entry::getKey,
+                            entry -> courseNames.getOrDefault(entry.getValue(), "Clase " + entry.getKey())
+                        )));
+            });
     }
 
     private ResponseEntity<byte[]> generarPdfError(String mensaje) {
@@ -466,7 +519,9 @@ public class ReportController {
         }
     }
 
-    private ResponseEntity<byte[]> generarPdfDiario(List<Attendance> attendances, LocalDate date, Map<String, String> nombres) {
+    private ResponseEntity<byte[]> generarPdfDiario(List<Attendance> attendances, LocalDate date,
+                                                    Map<String, String> nombres,
+                                                    Map<String, String> nombresClases) {
         try {
             ByteArrayOutputStream out = new ByteArrayOutputStream();
             Document doc = new Document(PageSize.A4.rotate());
@@ -522,6 +577,7 @@ public class ReportController {
 
             for (Map.Entry<String, List<Attendance>> entry : porClase.entrySet()) {
                 String claseId = entry.getKey();
+                String nombreClase = nombresClases.getOrDefault(claseId, "Clase " + claseId);
                 List<Attendance> asistencias = entry.getValue();
                 
                 for (int i = 0; i < asistencias.size(); i++) {
@@ -543,7 +599,7 @@ public class ReportController {
                     if (nombreProfesor.length() > 25) nombreProfesor = nombreProfesor.substring(0, 22) + "...";
                     
                     if (i == 0) {
-                        PdfPCell claseCell = new PdfPCell(new Phrase(claseId, new Font(Font.HELVETICA, 9, Font.BOLD)));
+                        PdfPCell claseCell = new PdfPCell(new Phrase(nombreClase, new Font(Font.HELVETICA, 9, Font.BOLD)));
                         claseCell.setVerticalAlignment(Element.ALIGN_MIDDLE);
                         claseCell.setRowspan(asistencias.size());
                         table.addCell(claseCell);

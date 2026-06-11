@@ -75,6 +75,10 @@ user:
   service:
     url: ${USER_SERVICE_URL:http://vg-ms-user:5082}
 
+academic:
+  service:
+    url: ${ACADEMIC_SERVICE_URL:http://vg-ms-academic:5089}
+
 services:
   comms:
     url: ${SERVICES_COMMS_URL:http://vg-ms-comms:5088}

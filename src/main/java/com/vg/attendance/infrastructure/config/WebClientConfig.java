@@ -17,6 +17,9 @@ public class WebClientConfig {
     @Value("${user.service.url:http://vg-ms-user:5082}")
     private String userServiceUrl;
 
+    @Value("${academic.service.url:http://vg-ms-academic:5089}")
+    private String academicServiceUrl;
+
     @Value("${services.comms.url:http://vg-ms-comms:5088}")
     private String commsServiceUrl;
 
@@ -38,6 +41,13 @@ public class WebClientConfig {
     public WebClient userWebClient() {
         return WebClient.builder()
                 .baseUrl(userServiceUrl)
+                .build();
+    }
+
+    @Bean
+    public WebClient academicWebClient() {
+        return WebClient.builder()
+                .baseUrl(academicServiceUrl)
                 .build();
     }
 

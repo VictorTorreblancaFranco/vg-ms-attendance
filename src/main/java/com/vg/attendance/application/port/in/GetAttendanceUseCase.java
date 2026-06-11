@@ -10,5 +10,6 @@ public interface GetAttendanceUseCase {
     Mono<AttendanceResponse> getAttendanceById(Long id);
     Flux<AttendanceResponse> getAttendanceByStudent(String estudianteId);
     Flux<AttendanceResponse> getAttendanceByClass(String claseId, LocalDate fecha);
+    Flux<AttendanceResponse> getAttendanceByDate(LocalDate fecha);
     Flux<AttendanceResponse> getAttendanceByDateRange(String estudianteId, LocalDate startDate, LocalDate endDate);
 }

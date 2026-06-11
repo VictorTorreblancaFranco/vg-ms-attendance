@@ -139,6 +139,16 @@ public class AttendanceController {
                 .collectList()
                 .flatMapMany(attendances -> enrichAttendances(attendances, token));
     }
+
+    @GetMapping("/date")
+    public Flux<AttendanceResponse> getAttendanceByDate(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fecha,
+            @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authHeader) {
+        String token = extractToken(authHeader);
+        return getUseCase.getAttendanceByDate(fecha)
+                .collectList()
+                .flatMapMany(attendances -> enrichAttendances(attendances, token));
+    }
     
     @GetMapping("/student/{estudianteId}/range")
     public Flux<AttendanceResponse> getAttendanceByDateRange(
