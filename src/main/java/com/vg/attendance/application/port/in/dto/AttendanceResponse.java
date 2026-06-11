@@ -16,9 +16,12 @@ import java.time.LocalTime;
 public class AttendanceResponse {
     private Long id;
     private String estudianteId;
+    private String estudianteNombre;
     private String claseId;
     private String profesorId;
+    private String profesorNombre;
     private String registradoPor;
+    private String registradoPorNombre;
     private LocalDate fecha;
     private Integer anioLectivo;
     private String estado;

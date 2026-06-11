@@ -12,6 +12,7 @@ import lombok.NoArgsConstructor;
 public class EnrollmentResponse {
     private Long id;
     private String studentId;
+    private String studentName;
     private Long academicYearId;
     private Long gradeId;
     private Long sectionId;
