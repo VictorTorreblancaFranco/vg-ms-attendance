@@ -66,7 +66,8 @@ public class AttendanceController {
         
         RegisterAttendanceCommand command = mapper.toCommand(request);
         String token = extractToken(authHeader);
-        return registerUseCase.registerAttendance(command)
+        return validateStudentEnrollmentForClass(request, authHeader, token)
+                .then(registerUseCase.registerAttendance(command))
                 .flatMap(response -> enrichAttendance(response, token));
     }
     
@@ -197,6 +198,37 @@ public class AttendanceController {
     private void validateDateRange(LocalDate startDate, LocalDate endDate) {
         if (startDate.isAfter(endDate)) {
             throw new BusinessException("La fecha de inicio no puede ser posterior a la fecha de fin");
+        }
+    }
+
+    private Mono<Void> validateStudentEnrollmentForClass(AttendanceRequest request, String authHeader, String token) {
+        Long classId = parseClassId(request.getClaseId());
+
+        return scheduleClient.getClassesByTeacher(request.getProfesorId(), authHeader)
+                .filter(schedule -> Objects.equals(schedule.getId(), classId))
+                .next()
+                .switchIfEmpty(Mono.error(new BusinessException("La clase no existe o no pertenece al profesor indicado")))
+                .flatMap(schedule -> enrollmentClient.getStudentsByGradeSectionYear(
+                                schedule.getGradeId(),
+                                schedule.getSectionId(),
+                                schedule.getAcademicYearId(),
+                                token)
+                        .filter(student -> Objects.equals(student.getStudentId(), request.getEstudianteId()))
+                        .filter(student -> student.getIsActive() == null || Boolean.TRUE.equals(student.getIsActive()))
+                        .filter(student -> Objects.equals(student.getGradeId(), schedule.getGradeId()))
+                        .filter(student -> Objects.equals(student.getSectionId(), schedule.getSectionId()))
+                        .filter(student -> Objects.equals(student.getAcademicYearId(), schedule.getAcademicYearId()))
+                        .next()
+                        .switchIfEmpty(Mono.error(new BusinessException(
+                                "El estudiante no está matriculado en el grado y sección de la clase"))))
+                .then();
+    }
+
+    private Long parseClassId(String classId) {
+        try {
+            return Long.valueOf(classId);
+        } catch (NumberFormatException error) {
+            throw new BusinessException("El identificador de clase no es válido");
         }
     }
 
