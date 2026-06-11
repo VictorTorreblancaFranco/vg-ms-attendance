@@ -7,6 +7,7 @@ import com.vg.attendance.application.port.in.command.RegisterAttendanceCommand;
 import com.vg.attendance.application.port.in.command.UpdateAttendanceCommand;
 import com.vg.attendance.application.port.in.dto.AttendanceResponse;
 import com.vg.attendance.application.port.out.AttendanceRepositoryPort;
+import com.vg.attendance.application.port.out.NotificationPort;
 import com.vg.attendance.domain.exception.BusinessException;
 import com.vg.attendance.domain.exception.ConflictException;
 import com.vg.attendance.domain.exception.NotFoundException;
@@ -33,6 +34,7 @@ public class AttendanceApplicationService implements
     
     private final AttendanceRepositoryPort attendanceRepository;
     private final AttendanceDomainService domainService;
+    private final NotificationPort notificationPort;
     
     @Override
     public Mono<AttendanceResponse> registerAttendance(RegisterAttendanceCommand command) {
@@ -65,6 +67,7 @@ public class AttendanceApplicationService implements
                 return domainService.validateAttendance(attendance)
                     .flatMap(attendanceRepository::save);
             })
+            .flatMap(saved -> notifyAttendance(saved).thenReturn(saved))
             .map(this::toResponse);
     }
     
@@ -93,6 +96,7 @@ public class AttendanceApplicationService implements
                 return domainService.validateAttendance(attendance)
                     .flatMap(attendanceRepository::save);
             })
+            .flatMap(saved -> notifyAttendance(saved).thenReturn(saved))
             .map(this::toResponse);
     }
     
@@ -151,5 +155,13 @@ public class AttendanceApplicationService implements
             .creadoEn(attendance.getCreadoEn())
             .actualizadoEn(attendance.getActualizadoEn())
             .build();
+    }
+
+    private Mono<Void> notifyAttendance(Attendance attendance) {
+        return notificationPort.notifyAbsenceOrLate(attendance)
+                .onErrorResume(error -> {
+                    log.warn("Attendance saved but notification failed: {}", error.getMessage());
+                    return Mono.empty();
+                });
     }
 }

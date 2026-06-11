@@ -3,6 +3,7 @@ package com.vg.attendance.application.service;
 import com.vg.attendance.application.port.in.command.RegisterAttendanceCommand;
 import com.vg.attendance.application.port.in.command.UpdateAttendanceCommand;
 import com.vg.attendance.application.port.out.AttendanceRepositoryPort;
+import com.vg.attendance.application.port.out.NotificationPort;
 import com.vg.attendance.domain.exception.BusinessException;
 import com.vg.attendance.domain.exception.ConflictException;
 import com.vg.attendance.domain.exception.NotFoundException;
@@ -25,7 +26,7 @@ class AttendanceApplicationServiceTest {
 
     private final InMemoryAttendanceRepository repository = new InMemoryAttendanceRepository();
     private final AttendanceApplicationService service =
-        new AttendanceApplicationService(repository, new AttendanceDomainServiceImpl());
+        new AttendanceApplicationService(repository, new AttendanceDomainServiceImpl(), new NoopNotificationPort());
 
     @Test
     void registerAttendanceCreatesRecordWhenItDoesNotExist() {
@@ -183,6 +184,18 @@ class AttendanceApplicationServiceTest {
         @Override
         public Flux<Attendance> findRecentAttendanceByStudent(String estudianteId) {
             return findByEstudianteId(estudianteId).take(30);
+        }
+    }
+
+    private static class NoopNotificationPort implements NotificationPort {
+        @Override
+        public Mono<Void> notifyAbsenceOrLate(Attendance attendance) {
+            return Mono.empty();
+        }
+
+        @Override
+        public Mono<Void> notifyThreeFullAbsenceDays(String estudianteId, int absenceDays) {
+            return Mono.empty();
         }
     }
 }

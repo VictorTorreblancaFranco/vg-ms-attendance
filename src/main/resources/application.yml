@@ -75,6 +75,10 @@ user:
   service:
     url: ${USER_SERVICE_URL:http://vg-ms-user:5082}
 
+services:
+  comms:
+    url: ${SERVICES_COMMS_URL:http://vg-ms-comms:5088}
+
 # School information for reports
 school:
   name: INSTITUCIÓN EDUCATIVA PÚBLICA MIXTO SAN LUIS

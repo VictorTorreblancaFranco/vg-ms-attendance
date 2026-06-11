@@ -1,5 +1,6 @@
 package com.vg.attendance.infrastructure.adapter.out.client;
 
+import com.vg.attendance.infrastructure.adapter.out.client.dto.ParentStudentLinkResponse;
 import com.vg.attendance.infrastructure.adapter.out.client.dto.UserResponse;
 import io.github.resilience4j.circuitbreaker.CircuitBreaker;
 import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry;
@@ -13,6 +14,7 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
+import reactor.core.publisher.Flux;
 
 import java.time.Duration;
 
@@ -37,6 +39,7 @@ public class UserClient {
         log.info("Obteniendo usuario: {}", userId);
         return userWebClient.get()
                 .uri("/api/users/{id}", userId)
+                .header("X-Internal-Request", "gateway")
                 .retrieve()
                 .bodyToMono(UserResponse.class)
                 .transformDeferred(CircuitBreakerOperator.of(circuitBreaker))
@@ -67,6 +70,22 @@ public class UserClient {
                     fallback.setLastName(shortId);
                     fallback.setEmail("");
                     return Mono.just(fallback);
+                });
+    }
+
+    public Flux<ParentStudentLinkResponse> getGuardiansByStudentId(String studentId) {
+        log.info("Obteniendo apoderados del estudiante: {}", studentId);
+        return userWebClient.get()
+                .uri("/api/users/students/{id}/guardians", studentId)
+                .header("X-Internal-Request", "gateway")
+                .retrieve()
+                .bodyToFlux(ParentStudentLinkResponse.class)
+                .transformDeferred(CircuitBreakerOperator.of(circuitBreaker))
+                .transformDeferred(RetryOperator.of(retry))
+                .timeout(Duration.ofSeconds(10))
+                .onErrorResume(e -> {
+                    log.error("Error al obtener apoderados del estudiante {}: {}", studentId, e.getMessage());
+                    return Flux.empty();
                 });
     }
 }
