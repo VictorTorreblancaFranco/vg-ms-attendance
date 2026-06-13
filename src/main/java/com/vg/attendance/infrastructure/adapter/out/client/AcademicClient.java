@@ -21,7 +21,7 @@ public class AcademicClient {
 
     public Mono<CourseResponse> getCourseById(Long id) {
         return academicWebClient.get()
-                .uri("/academic/courses/{id}", id)
+                .uri("/api/academic/courses/{id}", id)
                 .retrieve()
                 .bodyToMono(CourseResponse.class)
                 .onErrorResume(error -> {
