@@ -6,5 +6,4 @@ import reactor.core.publisher.Mono;
 
 public interface UpdateAttendanceUseCase {
     Mono<AttendanceResponse> updateAttendance(Long id, UpdateAttendanceCommand command);
-    Mono<Void> deleteAttendance(Long id);
 }

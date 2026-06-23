@@ -25,6 +25,7 @@ public class CloudinaryService {
                     ObjectUtils.asMap(
                         "folder", "attendance_justifications",
                         "public_id", System.currentTimeMillis() + "_" + filename.replaceAll("\\s+", "_"),
+                        "resource_type", "auto",
                         "allowed_formats", new String[]{"jpg", "jpeg", "png", "pdf"}
                     ));
                 return uploadResult.get("secure_url").toString();

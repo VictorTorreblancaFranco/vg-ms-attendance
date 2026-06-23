@@ -15,6 +15,7 @@ import java.time.LocalTime;
 @AllArgsConstructor
 public class AttendanceResponse {
     private Long id;
+    private Long sessionId;
     private String estudianteId;
     private String estudianteNombre;
     private String claseId;

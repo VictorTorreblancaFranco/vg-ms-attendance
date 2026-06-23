@@ -19,10 +19,24 @@ public class AttendanceDomainServiceImpl implements AttendanceDomainService {
         if (status == AttendanceStatus.TARDANZA && attendance.getHoraLlegada() == null) {
             return Mono.error(new BusinessException("La tardanza requiere hora de llegada"));
         }
+
+        if (status != AttendanceStatus.TARDANZA && attendance.getHoraLlegada() != null) {
+            return Mono.error(new BusinessException("Solo la tardanza puede registrar hora de llegada"));
+        }
         
         if (status == AttendanceStatus.JUSTIFICADO &&
                 (attendance.getJustificacionNota() == null || attendance.getJustificacionNota().isBlank())) {
             return Mono.error(new BusinessException("La justificación requiere una nota"));
+        }
+
+        if (status != AttendanceStatus.JUSTIFICADO && status != AttendanceStatus.TARDANZA
+                && attendance.getJustificacionNota() != null
+                && !attendance.getJustificacionNota().isBlank()) {
+            return Mono.error(new BusinessException("Solo una falta justificada o tardanza puede tener nota de justificación"));
+        }
+
+        if (attendance.getJustificacionNota() != null && attendance.getJustificacionNota().length() > 500) {
+            return Mono.error(new BusinessException("La nota de justificación no puede superar 500 caracteres"));
         }
         
         return Mono.just(attendance);

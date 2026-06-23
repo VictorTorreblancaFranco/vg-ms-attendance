@@ -1,0 +1,178 @@
+package com.vg.attendance.infrastructure.config;
+
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.ApplicationArguments;
+import org.springframework.boot.ApplicationRunner;
+import org.springframework.r2dbc.core.DatabaseClient;
+import org.springframework.stereotype.Component;
+import reactor.core.publisher.Mono;
+
+@Slf4j
+@Component
+@RequiredArgsConstructor
+public class AttendanceSchemaInitializer implements ApplicationRunner {
+
+    private final DatabaseClient databaseClient;
+
+    @Override
+    public void run(ApplicationArguments args) {
+        createSessionTable()
+                .then(addSessionIdToAttendance())
+                .then(createSessionIndexes())
+                .then(backfillAttendanceSessions())
+                .then(createAuditTable())
+                .then(normalizeExistingAttendanceData())
+                .then(createDuplicateProtectionIndex())
+                .doOnSuccess(ignored -> log.info("Attendance schema checks completed"))
+                .onErrorResume(error -> {
+                    log.warn("Attendance schema checks completed with warning: {}", error.getMessage());
+                    return Mono.empty();
+                })
+                .subscribe();
+    }
+
+    private Mono<Void> createSessionTable() {
+        return databaseClient.sql("""
+                CREATE TABLE IF NOT EXISTS asistencia_sesiones (
+                    id BIGSERIAL PRIMARY KEY,
+                    clase_id VARCHAR(80) NOT NULL,
+                    profesor_id VARCHAR(80) NOT NULL,
+                    fecha DATE NOT NULL,
+                    anio_lectivo INTEGER NOT NULL,
+                    estado VARCHAR(20) NOT NULL DEFAULT 'DRAFT',
+                    total_estudiantes INTEGER,
+                    registros_guardados INTEGER NOT NULL DEFAULT 0,
+                    creado_por VARCHAR(80),
+                    enviado_por VARCHAR(80),
+                    enviado_en TIMESTAMP,
+                    creado_en TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    actualizado_en TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    version INTEGER NOT NULL DEFAULT 0
+                )
+                """)
+                .then();
+    }
+
+    private Mono<Void> addSessionIdToAttendance() {
+        return databaseClient.sql("""
+                ALTER TABLE asistencias
+                ADD COLUMN IF NOT EXISTS session_id BIGINT
+                """)
+                .then();
+    }
+
+    private Mono<Void> backfillAttendanceSessions() {
+        return databaseClient.sql("""
+                INSERT INTO asistencia_sesiones (
+                    clase_id,
+                    profesor_id,
+                    fecha,
+                    anio_lectivo,
+                    estado,
+                    total_estudiantes,
+                    registros_guardados,
+                    creado_por,
+                    enviado_por,
+                    enviado_en,
+                    creado_en,
+                    actualizado_en,
+                    version
+                )
+                SELECT
+                    a.clase_id,
+                    MIN(a.profesor_id) AS profesor_id,
+                    a.fecha,
+                    MIN(a.anio_lectivo) AS anio_lectivo,
+                    'SUBMITTED' AS estado,
+                    COUNT(*) AS total_estudiantes,
+                    COUNT(*) AS registros_guardados,
+                    MIN(a.registrado_por) AS creado_por,
+                    MIN(a.registrado_por) AS enviado_por,
+                    MAX(COALESCE(a.actualizado_en, a.registrado_en, a.creado_en, CURRENT_TIMESTAMP)) AS enviado_en,
+                    MIN(COALESCE(a.creado_en, a.registrado_en, CURRENT_TIMESTAMP)) AS creado_en,
+                    MAX(COALESCE(a.actualizado_en, a.registrado_en, a.creado_en, CURRENT_TIMESTAMP)) AS actualizado_en,
+                    0 AS version
+                FROM asistencias a
+                WHERE a.session_id IS NULL
+                GROUP BY a.clase_id, a.fecha
+                ON CONFLICT (clase_id, fecha) DO NOTHING
+                """)
+                .then()
+                .then(databaseClient.sql("""
+                        UPDATE asistencias a
+                        SET session_id = s.id
+                        FROM asistencia_sesiones s
+                        WHERE a.session_id IS NULL
+                          AND s.clase_id = a.clase_id
+                          AND s.fecha = a.fecha
+                        """).then());
+    }
+
+    private Mono<Void> createAuditTable() {
+        return databaseClient.sql("""
+                CREATE TABLE IF NOT EXISTS asistencia_auditoria (
+                    id BIGSERIAL PRIMARY KEY,
+                    attendance_id BIGINT NOT NULL,
+                    changed_by VARCHAR(80),
+                    changed_by_role VARCHAR(40),
+                    action VARCHAR(30) NOT NULL,
+                    previous_estado VARCHAR(2),
+                    new_estado VARCHAR(2),
+                    previous_hora_llegada VARCHAR(20),
+                    new_hora_llegada VARCHAR(20),
+                    previous_justificacion_nota TEXT,
+                    new_justificacion_nota TEXT,
+                    previous_justificacion_foto_url TEXT,
+                    new_justificacion_foto_url TEXT,
+                    motivo_cambio TEXT,
+                    changed_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+                )
+                """)
+                .then();
+    }
+
+    private Mono<Void> normalizeExistingAttendanceData() {
+        return databaseClient.sql("""
+                UPDATE asistencias
+                SET hora_llegada = NULL
+                WHERE estado <> 'T' AND hora_llegada IS NOT NULL
+                """)
+                .then()
+                .then(databaseClient.sql("""
+                        UPDATE asistencias
+                        SET justificacion_nota = NULL,
+                            justificacion_foto_url = NULL
+                        WHERE estado NOT IN ('J', 'T')
+                          AND (justificacion_nota IS NOT NULL OR justificacion_foto_url IS NOT NULL)
+                        """).then());
+    }
+
+    private Mono<Void> createDuplicateProtectionIndex() {
+        return databaseClient.sql("""
+                CREATE UNIQUE INDEX IF NOT EXISTS ux_asistencias_estudiante_clase_fecha
+                ON asistencias (estudiante_id, clase_id, fecha)
+                """)
+                .then()
+                .onErrorResume(error -> {
+                    log.warn("No se pudo crear indice unico de asistencias; revisa duplicados existentes: {}", error.getMessage());
+                    return Mono.empty();
+                });
+    }
+
+    private Mono<Void> createSessionIndexes() {
+        return databaseClient.sql("""
+                CREATE UNIQUE INDEX IF NOT EXISTS ux_asistencia_sesiones_clase_fecha
+                ON asistencia_sesiones (clase_id, fecha)
+                """)
+                .then()
+                .then(databaseClient.sql("""
+                        CREATE INDEX IF NOT EXISTS ix_asistencias_session_id
+                        ON asistencias (session_id)
+                        """).then())
+                .onErrorResume(error -> {
+                    log.warn("No se pudieron crear indices de sesiones de asistencia: {}", error.getMessage());
+                    return Mono.empty();
+                });
+    }
+}

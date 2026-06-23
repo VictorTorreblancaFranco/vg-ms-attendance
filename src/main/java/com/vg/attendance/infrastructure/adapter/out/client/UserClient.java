@@ -9,6 +9,7 @@ import io.github.resilience4j.reactor.retry.RetryOperator;
 import io.github.resilience4j.retry.Retry;
 import io.github.resilience4j.retry.RetryRegistry;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
@@ -40,8 +41,15 @@ public class UserClient {
         return userWebClient.get()
                 .uri("/api/users/{id}", userId)
                 .header("X-Internal-Request", "gateway")
-                .retrieve()
-                .bodyToMono(UserResponse.class)
+                .exchangeToMono(response -> {
+                    if (response.statusCode().equals(HttpStatus.NOT_FOUND)) {
+                        return Mono.empty();
+                    }
+                    if (response.statusCode().isError()) {
+                        return response.createException().flatMap(Mono::error);
+                    }
+                    return response.bodyToMono(UserResponse.class);
+                })
                 .transformDeferred(CircuitBreakerOperator.of(circuitBreaker))
                 .transformDeferred(RetryOperator.of(retry))
                 .timeout(Duration.ofSeconds(10))
@@ -56,20 +64,21 @@ public class UserClient {
         return userWebClient.get()
                 .uri("/api/users/{id}", userId)
                 .header("Authorization", "Bearer " + token)
-                .retrieve()
-                .bodyToMono(UserResponse.class)
+                .exchangeToMono(response -> {
+                    if (response.statusCode().equals(HttpStatus.NOT_FOUND)) {
+                        return Mono.empty();
+                    }
+                    if (response.statusCode().isError()) {
+                        return response.createException().flatMap(Mono::error);
+                    }
+                    return response.bodyToMono(UserResponse.class);
+                })
                 .transformDeferred(CircuitBreakerOperator.of(circuitBreaker))
                 .transformDeferred(RetryOperator.of(retry))
                 .timeout(Duration.ofSeconds(10))
                 .onErrorResume(e -> {
                     log.error("Error al obtener usuario {}: {}", userId, e.getMessage());
-                    String shortId = userId.length() > 4 ? userId.substring(userId.length() - 4) : userId;
-                    UserResponse fallback = new UserResponse();
-                    fallback.setId(userId);
-                    fallback.setFirstName("Alumno");
-                    fallback.setLastName(shortId);
-                    fallback.setEmail("");
-                    return Mono.just(fallback);
+                    return Mono.empty();
                 });
     }
 
@@ -78,8 +87,15 @@ public class UserClient {
         return userWebClient.get()
                 .uri("/api/users/students/{id}/guardians", studentId)
                 .header("X-Internal-Request", "gateway")
-                .retrieve()
-                .bodyToFlux(ParentStudentLinkResponse.class)
+                .exchangeToFlux(response -> {
+                    if (response.statusCode().equals(HttpStatus.NOT_FOUND)) {
+                        return Flux.empty();
+                    }
+                    if (response.statusCode().isError()) {
+                        return response.createException().flatMapMany(Flux::error);
+                    }
+                    return response.bodyToFlux(ParentStudentLinkResponse.class);
+                })
                 .transformDeferred(CircuitBreakerOperator.of(circuitBreaker))
                 .transformDeferred(RetryOperator.of(retry))
                 .timeout(Duration.ofSeconds(10))
@@ -88,4 +104,5 @@ public class UserClient {
                     return Flux.empty();
                 });
     }
+
 }

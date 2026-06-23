@@ -17,8 +17,10 @@ public class RegisterAttendanceCommand {
     private String claseId;
     private String profesorId;
     private String registradoPor;
+    private String registradoPorRole;
     private LocalDate fecha;
     private Integer anioLectivo;
+    private Integer totalEstudiantesSesion;
     private String estado;
     private LocalTime horaLlegada;
     private String justificacionNota;

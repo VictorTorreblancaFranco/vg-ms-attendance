@@ -24,4 +24,7 @@ public interface AttendanceR2dbcRepository extends R2dbcRepository<Attendance, L
     
     @Query("SELECT EXISTS(SELECT 1 FROM asistencias WHERE estudiante_id = $1 AND clase_id = $2 AND fecha = $3)")
     Mono<Boolean> existsByEstudianteIdAndClaseIdAndFecha(String estudianteId, String claseId, LocalDate fecha);
+
+    @Query("SELECT COUNT(*) FROM asistencias WHERE session_id = $1")
+    Mono<Long> countBySessionId(Long sessionId);
 }

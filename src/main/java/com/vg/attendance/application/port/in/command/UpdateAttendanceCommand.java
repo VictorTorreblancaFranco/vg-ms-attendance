@@ -17,4 +17,6 @@ public class UpdateAttendanceCommand {
     private String justificacionNota;
     private String justificacionFotoUrl;
     private String motivoCambio;
+    private String changedBy;
+    private String changedByRole;
 }

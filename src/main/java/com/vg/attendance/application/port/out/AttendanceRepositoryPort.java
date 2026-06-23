@@ -13,7 +13,7 @@ public interface AttendanceRepositoryPort {
     Flux<Attendance> findByClaseIdAndFecha(String claseId, LocalDate fecha);
     Flux<Attendance> findByEstudianteIdAndFechaBetween(String estudianteId, LocalDate startDate, LocalDate endDate);
     Mono<Boolean> existsByEstudianteIdAndClaseIdAndFecha(String estudianteId, String claseId, LocalDate fecha);
-    Mono<Void> deleteById(Long id);
+    Mono<Long> countBySessionId(Long sessionId);
     Flux<Attendance> findByFecha(LocalDate fecha);
     Flux<Attendance> findRecentAttendanceByStudent(String estudianteId);
 }

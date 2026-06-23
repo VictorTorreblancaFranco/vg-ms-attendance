@@ -22,11 +22,15 @@ public enum AttendanceStatus {
     }
     
     public static AttendanceStatus fromCode(String code) {
+        if (code == null || code.isBlank()) {
+            throw new IllegalArgumentException("El estado de asistencia es obligatorio");
+        }
+        String normalizedCode = code.trim().toUpperCase();
         for (AttendanceStatus status : values()) {
-            if (status.code.equals(code)) {
+            if (status.code.equals(normalizedCode)) {
                 return status;
             }
         }
-        throw new IllegalArgumentException("Invalid status code: " + code);
+        throw new IllegalArgumentException("El estado debe ser A, F, T o J");
     }
 }

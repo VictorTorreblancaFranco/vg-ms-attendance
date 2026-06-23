@@ -5,6 +5,7 @@ import java.io.ByteArrayOutputStream;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -22,6 +23,7 @@ import com.lowagie.text.pdf.PdfPCell;
 import com.lowagie.text.pdf.PdfPTable;
 import com.lowagie.text.pdf.PdfWriter;
 import com.vg.attendance.application.port.out.AttendanceRepositoryPort;
+import com.vg.attendance.domain.exception.ForbiddenException;
 import com.vg.attendance.domain.model.Attendance;
 import com.vg.attendance.infrastructure.adapter.out.client.AcademicClient;
 import com.vg.attendance.infrastructure.adapter.out.client.ScheduleClient;
@@ -76,13 +78,16 @@ public class ReportController {
     public Mono<ResponseEntity<byte[]>> getClassReport(
             @PathVariable String classId,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
-            @RequestHeader("Authorization") String authHeader) {
+            @RequestHeader("Authorization") String authHeader,
+            @RequestHeader(value = "X-User-Id", required = false) String userId,
+            @RequestHeader(value = "X-User-Role", required = false) String role) {
 
         log.info("Reporte por clase: {}, fecha: {}", classId, date);
         String token = authHeader.substring(7);
 
         return attendanceRepository.findByClaseIdAndFecha(classId, date)
             .collectList()
+            .flatMap(attendances -> filterReportAccess(attendances, userId, role))
             .flatMap(attendances -> {
                 if (attendances.isEmpty()) {
                     return generatePdf(() -> generarPdfError("No hay asistencias para esta clase en la fecha seleccionada"));
@@ -90,6 +95,7 @@ public class ReportController {
                 return obtenerNombres(attendances, token)
                     .flatMap(nombres -> generatePdf(() -> generarPdfClase(attendances, date, classId, nombres)));
             })
+            .onErrorResume(ForbiddenException.class, e -> Mono.just(ResponseEntity.<byte[]>status(HttpStatus.FORBIDDEN).build()))
             .onErrorResume(e -> {
                 log.error("Error: {}", e.getMessage());
                 return generatePdf(() -> generarPdfError("Error generando reporte: " + e.getMessage()));
@@ -101,13 +107,16 @@ public class ReportController {
             @PathVariable String studentId,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
-            @RequestHeader("Authorization") String authHeader) {
+            @RequestHeader("Authorization") String authHeader,
+            @RequestHeader(value = "X-User-Id", required = false) String userId,
+            @RequestHeader(value = "X-User-Role", required = false) String role) {
 
         log.info("Reporte por estudiante: {} desde {} hasta {}", studentId, startDate, endDate);
         String token = authHeader.substring(7);
 
         return attendanceRepository.findByEstudianteIdAndFechaBetween(studentId, startDate, endDate)
             .collectList()
+            .flatMap(attendances -> filterReportAccess(attendances, userId, role))
             .flatMap(attendances -> {
                 if (attendances.isEmpty()) {
                     return generatePdf(() -> generarPdfError("No hay asistencias para este estudiante en el período seleccionado"));
@@ -121,6 +130,7 @@ public class ReportController {
                     return generatePdf(() -> generarPdfEstudiante(attendances, studentId, nombre, startDate, endDate, nombres));
                 });
             })
+            .onErrorResume(ForbiddenException.class, e -> Mono.just(ResponseEntity.<byte[]>status(HttpStatus.FORBIDDEN).build()))
             .onErrorResume(e -> {
                 log.error("Error: {}", e.getMessage());
                 return generatePdf(() -> generarPdfError("Error generando reporte: " + e.getMessage()));
@@ -130,13 +140,16 @@ public class ReportController {
     @GetMapping("/daily")
     public Mono<ResponseEntity<byte[]>> getDailyReport(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
-            @RequestHeader("Authorization") String authHeader) {
+            @RequestHeader("Authorization") String authHeader,
+            @RequestHeader(value = "X-User-Id", required = false) String userId,
+            @RequestHeader(value = "X-User-Role", required = false) String role) {
 
         log.info("Reporte diario: {}", date);
         String token = authHeader.substring(7);
 
         return attendanceRepository.findByFecha(date)
             .collectList()
+            .flatMap(attendances -> filterReportAccess(attendances, userId, role))
             .flatMap(attendances -> {
                 if (attendances.isEmpty()) {
                     return generatePdf(() -> generarPdfError("No hay asistencias registradas para esta fecha"));
@@ -147,10 +160,46 @@ public class ReportController {
                     )
                     .flatMap(tuple -> generatePdf(() -> generarPdfDiario(attendances, date, tuple.getT1(), tuple.getT2())));
             })
+            .onErrorResume(ForbiddenException.class, e -> Mono.just(ResponseEntity.<byte[]>status(HttpStatus.FORBIDDEN).build()))
             .onErrorResume(e -> {
                 log.error("Error: {}", e.getMessage());
                 return generatePdf(() -> generarPdfError("Error generando reporte: " + e.getMessage()));
             });
+    }
+
+    private Mono<List<Attendance>> filterReportAccess(List<Attendance> attendances, String userId, String role) {
+        if (attendances.isEmpty()) {
+            return Mono.just(attendances);
+        }
+
+        return Flux.fromIterable(attendances)
+            .filterWhen(attendance -> canReadAttendance(attendance, userId, role))
+            .collectList()
+            .flatMap(allowed -> {
+                if (allowed.isEmpty()) {
+                    return Mono.error(new ForbiddenException("No tienes permisos para generar este reporte"));
+                }
+                return Mono.just(allowed);
+            });
+    }
+
+    private Mono<Boolean> canReadAttendance(Attendance attendance, String userId, String role) {
+        if (role != null && Set.of("ADMIN", "DEVELOPER", "DIRECTOR", "COORDINATOR", "COORDINADOR", "SECRETARY", "SECRETARIA")
+                .contains(role.trim().toUpperCase(Locale.ROOT))) {
+            return Mono.just(true);
+        }
+        if (userId == null || userId.isBlank()) {
+            return Mono.just(false);
+        }
+        boolean directAccess = userId.equals(attendance.getEstudianteId())
+            || userId.equals(attendance.getProfesorId())
+            || userId.equals(attendance.getRegistradoPor());
+        if (directAccess) {
+            return Mono.just(true);
+        }
+
+        return userClient.getGuardiansByStudentId(attendance.getEstudianteId())
+            .any(link -> userId.equals(link.getParentId()));
     }
 
     private Mono<ResponseEntity<byte[]>> generatePdf(Supplier<ResponseEntity<byte[]>> generator) {
@@ -295,15 +344,16 @@ public class ReportController {
             long total = attendances.size();
             long asistieron = attendances.stream().filter(a -> "A".equals(a.getEstado())).count();
             long tardanza = attendances.stream().filter(a -> "T".equals(a.getEstado())).count();
+            long tardanzaJustificada = attendances.stream().filter(this::isJustifiedLate).count();
             long justificados = attendances.stream().filter(a -> "J".equals(a.getEstado())).count();
             long faltaron = attendances.stream().filter(a -> "F".equals(a.getEstado())).count();
 
-            PdfPTable stats = new PdfPTable(5);
+            PdfPTable stats = new PdfPTable(6);
             stats.setWidthPercentage(100);
             
-            String[] labels = {"Total", "Asistieron", "Tardanza", "Justificados", "Faltaron"};
-            long[] values = {total, asistieron, tardanza, justificados, faltaron};
-            Color[] colors = {new Color(0,51,102), new Color(40,167,69), new Color(255,193,7), new Color(0,123,255), new Color(220,53,69)};
+            String[] labels = {"Total", "Asistieron", "Tardanza", "Tard. Just.", "Justificados", "Faltaron"};
+            long[] values = {total, asistieron, tardanza, tardanzaJustificada, justificados, faltaron};
+            Color[] colors = {new Color(0,51,102), new Color(40,167,69), new Color(255,193,7), new Color(245,158,11), new Color(0,123,255), new Color(220,53,69)};
             
             for (String label : labels) {
                 PdfPCell cell = new PdfPCell(new Phrase(label, new Font(Font.HELVETICA, 10, Font.BOLD, Color.WHITE)));
@@ -338,15 +388,8 @@ public class ReportController {
 
             int counter = 1;
             for (Attendance a : attendances) {
-                String estado = "";
-                Color estadoColor = Color.BLACK;
-                switch (a.getEstado()) {
-                    case "A": estado = "ASISTIÓ"; estadoColor = new Color(40, 167, 69); break;
-                    case "T": estado = "TARDANZA"; estadoColor = new Color(255, 193, 7); break;
-                    case "J": estado = "JUSTIFICADO"; estadoColor = new Color(0, 123, 255); break;
-                    case "F": estado = "FALTÓ"; estadoColor = new Color(220, 53, 69); break;
-                    default: estado = a.getEstado();
-                }
+                String estado = estadoLabel(a);
+                Color estadoColor = estadoColor(a);
                 
                 String nombre = nombres.getOrDefault(a.getEstudianteId(), a.getEstudianteId());
                 if (nombre.length() > 30) nombre = nombre.substring(0, 27) + "...";
@@ -432,15 +475,16 @@ public class ReportController {
             long total = attendances.size();
             long asistieron = attendances.stream().filter(a -> "A".equals(a.getEstado())).count();
             long tardanza = attendances.stream().filter(a -> "T".equals(a.getEstado())).count();
+            long tardanzaJustificada = attendances.stream().filter(this::isJustifiedLate).count();
             long justificados = attendances.stream().filter(a -> "J".equals(a.getEstado())).count();
             long faltaron = attendances.stream().filter(a -> "F".equals(a.getEstado())).count();
 
-            PdfPTable stats = new PdfPTable(5);
+            PdfPTable stats = new PdfPTable(6);
             stats.setWidthPercentage(100);
             
-            String[] labels = {"Total Clases", "Asistió", "Tardanza", "Justificado", "Faltó"};
-            long[] values = {total, asistieron, tardanza, justificados, faltaron};
-            Color[] colors = {new Color(0,51,102), new Color(40,167,69), new Color(255,193,7), new Color(0,123,255), new Color(220,53,69)};
+            String[] labels = {"Total Clases", "Asistió", "Tardanza", "Tard. Just.", "Justificado", "Faltó"};
+            long[] values = {total, asistieron, tardanza, tardanzaJustificada, justificados, faltaron};
+            Color[] colors = {new Color(0,51,102), new Color(40,167,69), new Color(255,193,7), new Color(245,158,11), new Color(0,123,255), new Color(220,53,69)};
             
             for (String label : labels) {
                 PdfPCell cell = new PdfPCell(new Phrase(label, new Font(Font.HELVETICA, 10, Font.BOLD, Color.WHITE)));
@@ -474,15 +518,8 @@ public class ReportController {
             }
 
             for (Attendance a : attendances) {
-                String estado = "";
-                Color estadoColor = Color.BLACK;
-                switch (a.getEstado()) {
-                    case "A": estado = "ASISTIÓ"; estadoColor = new Color(40, 167, 69); break;
-                    case "T": estado = "TARDANZA"; estadoColor = new Color(255, 193, 7); break;
-                    case "J": estado = "JUSTIFICADO"; estadoColor = new Color(0, 123, 255); break;
-                    case "F": estado = "FALTÓ"; estadoColor = new Color(220, 53, 69); break;
-                    default: estado = a.getEstado();
-                }
+                String estado = estadoLabel(a);
+                Color estadoColor = estadoColor(a);
                 
                 table.addCell(new PdfPCell(new Phrase(a.getFecha().format(DateTimeFormatter.ofPattern("dd/MM/yyyy")), new Font(Font.HELVETICA, 9))));
                 table.addCell(new PdfPCell(new Phrase(a.getClaseId(), new Font(Font.HELVETICA, 9))));
@@ -583,15 +620,8 @@ public class ReportController {
                 for (int i = 0; i < asistencias.size(); i++) {
                     Attendance a = asistencias.get(i);
                     
-                    String estado = "";
-                    Color estadoColor = Color.BLACK;
-                    switch (a.getEstado()) {
-                        case "A": estado = "ASISTIÓ"; estadoColor = new Color(40, 167, 69); break;
-                        case "T": estado = "TARDANZA"; estadoColor = new Color(255, 193, 7); break;
-                        case "J": estado = "JUSTIFICADO"; estadoColor = new Color(0, 123, 255); break;
-                        case "F": estado = "FALTÓ"; estadoColor = new Color(220, 53, 69); break;
-                        default: estado = a.getEstado();
-                    }
+                    String estado = estadoLabel(a);
+                    Color estadoColor = estadoColor(a);
                     
                     String nombreEstudiante = nombres.getOrDefault(a.getEstudianteId(), a.getEstudianteId());
                     String nombreProfesor = nombres.getOrDefault(a.getProfesorId(), a.getProfesorId());
@@ -641,5 +671,37 @@ public class ReportController {
             log.error("Error generando PDF: {}", e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
+    }
+
+    private boolean isJustifiedLate(Attendance attendance) {
+        return "T".equals(attendance.getEstado()) && hasJustification(attendance);
+    }
+
+    private boolean hasJustification(Attendance attendance) {
+        return hasText(attendance.getJustificacionNota()) || hasText(attendance.getJustificacionFotoUrl());
+    }
+
+    private boolean hasText(String value) {
+        return value != null && !value.isBlank();
+    }
+
+    private String estadoLabel(Attendance attendance) {
+        return switch (attendance.getEstado()) {
+            case "A" -> "ASISTIÓ";
+            case "T" -> isJustifiedLate(attendance) ? "TARDANZA JUST." : "TARDANZA";
+            case "J" -> "JUSTIFICADO";
+            case "F" -> "FALTÓ";
+            default -> attendance.getEstado();
+        };
+    }
+
+    private Color estadoColor(Attendance attendance) {
+        return switch (attendance.getEstado()) {
+            case "A" -> new Color(40, 167, 69);
+            case "T" -> isJustifiedLate(attendance) ? new Color(245, 158, 11) : new Color(255, 193, 7);
+            case "J" -> new Color(0, 123, 255);
+            case "F" -> new Color(220, 53, 69);
+            default -> Color.BLACK;
+        };
     }
 }

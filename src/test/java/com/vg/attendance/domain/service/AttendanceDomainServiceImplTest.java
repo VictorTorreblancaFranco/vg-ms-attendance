@@ -40,6 +40,32 @@ class AttendanceDomainServiceImplTest {
     }
 
     @Test
+    void validateAttendanceAllowsLateStatusWithOptionalJustificationNote() {
+        Attendance attendance = Attendance.builder()
+            .estado("T")
+            .horaLlegada(LocalTime.of(8, 20))
+            .justificacionNota("Llegó tarde con sustento")
+            .build();
+
+        StepVerifier.create(service.validateAttendance(attendance))
+            .expectNext(attendance)
+            .verifyComplete();
+    }
+
+    @Test
+    void validateAttendanceRejectsAbsentStatusWithJustificationNote() {
+        Attendance attendance = Attendance.builder()
+            .estado("F")
+            .justificacionNota("Debe ser J para justificar falta")
+            .build();
+
+        StepVerifier.create(service.validateAttendance(attendance))
+            .expectErrorMatches(error -> error instanceof BusinessException
+                && error.getMessage().equals("Solo una falta justificada o tardanza puede tener nota de justificación"))
+            .verify();
+    }
+
+    @Test
     void calculateLateMinutesReturnsOnlyPositiveDelay() {
         assertThat(service.calculateLateMinutes(LocalTime.of(8, 15), LocalTime.of(8, 0))).isEqualTo(15);
         assertThat(service.calculateLateMinutes(LocalTime.of(7, 55), LocalTime.of(8, 0))).isZero();

@@ -44,10 +44,10 @@ public class AttendanceRepositoryAdapter implements AttendanceRepositoryPort {
     public Mono<Boolean> existsByEstudianteIdAndClaseIdAndFecha(String estudianteId, String claseId, LocalDate fecha) {
         return repository.existsByEstudianteIdAndClaseIdAndFecha(estudianteId, claseId, fecha);
     }
-    
+
     @Override
-    public Mono<Void> deleteById(Long id) {
-        return repository.deleteById(id);
+    public Mono<Long> countBySessionId(Long sessionId) {
+        return repository.countBySessionId(sessionId);
     }
     
     @Override
