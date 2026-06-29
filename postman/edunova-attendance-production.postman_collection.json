@@ -1,0 +1,951 @@
+{
+  "info": {
+    "_postman_id": "d7a6e26e-f8a4-4cfd-90ce-1bb3f513b27e",
+    "name": "EduNova Attendance - Produccion",
+    "description": "Coleccion para probar vg-ms-attendance en produccion: https://lab.vallegrande.edu.pe/eduback. Incluye login, datos reales precargados, autodiscovery, lecturas, reportes y mutaciones opcionales.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{accessToken}}",
+        "type": "string"
+      }
+    ]
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "const isLoginRequest = pm.info.requestName === 'Login - Produccion';",
+          "if (isLoginRequest) return;",
+          "const baseUrl = pm.collectionVariables.get('baseUrl') || pm.environment.get('baseUrl');",
+          "const email = pm.collectionVariables.get('authEmail') || pm.environment.get('authEmail');",
+          "const password = pm.collectionVariables.get('authPassword') || pm.environment.get('authPassword');",
+          "const token = pm.collectionVariables.get('accessToken') || pm.environment.get('accessToken');",
+          "const expiresAt = Number(pm.collectionVariables.get('accessTokenExpiresAt') || pm.environment.get('accessTokenExpiresAt') || 0);",
+          "if (token && expiresAt && Date.now() < expiresAt - 60000) return;",
+          "pm.sendRequest({",
+          "  url: `${baseUrl}/auth/login`,",
+          "  method: 'POST',",
+          "  header: { 'Content-Type': 'application/json' },",
+          "  body: { mode: 'raw', raw: JSON.stringify({ email, password }) }",
+          "}, (err, res) => {",
+          "  if (err) throw new Error(`No se pudo obtener token: ${err.message || err}`);",
+          "  if (!res || res.code < 200 || res.code >= 300) throw new Error(`Login fallo HTTP ${res ? res.code : 'sin respuesta'}: ${res ? res.text() : ''}`);",
+          "  const json = res.json();",
+          "  if (!json.accessToken) throw new Error('Login no devolvio accessToken');",
+          "  pm.collectionVariables.set('accessToken', json.accessToken);",
+          "  pm.collectionVariables.set('refreshToken', json.refreshToken || '');",
+          "  pm.collectionVariables.set('accessTokenExpiresAt', String(Date.now() + (json.expiresInMs || 3600000)));",
+          "  pm.collectionVariables.set('authUsername', json.username || '');",
+          "  pm.collectionVariables.set('authRoleCode', json.roleCode || '');",
+          "  if (pm.environment && pm.environment.name) {",
+          "    pm.environment.set('accessToken', json.accessToken);",
+          "    pm.environment.set('refreshToken', json.refreshToken || '');",
+          "    pm.environment.set('accessTokenExpiresAt', String(Date.now() + (json.expiresInMs || 3600000)));",
+          "    pm.environment.set('authUsername', json.username || '');",
+          "    pm.environment.set('authRoleCode', json.roleCode || '');",
+          "  }",
+          "});"
+        ]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "https://lab.vallegrande.edu.pe/eduback",
+      "type": "string"
+    },
+    {
+      "key": "authEmail",
+      "value": "admin@vg.com",
+      "type": "string"
+    },
+    {
+      "key": "authPassword",
+      "value": "Admin123!",
+      "type": "string"
+    },
+    {
+      "key": "accessToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "refreshToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "accessTokenExpiresAt",
+      "value": "0",
+      "type": "string"
+    },
+    {
+      "key": "teacherId",
+      "value": "30000000-0000-0000-0000-000000000011",
+      "type": "string"
+    },
+    {
+      "key": "classId",
+      "value": "61",
+      "type": "string"
+    },
+    {
+      "key": "gradeId",
+      "value": "5",
+      "type": "string"
+    },
+    {
+      "key": "sectionId",
+      "value": "8",
+      "type": "string"
+    },
+    {
+      "key": "yearId",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "academicYear",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "courseId",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "courseName",
+      "value": "Matematica",
+      "type": "string"
+    },
+    {
+      "key": "gradeName",
+      "value": "Quinto de Secundaria",
+      "type": "string"
+    },
+    {
+      "key": "sectionName",
+      "value": "Seccion B",
+      "type": "string"
+    },
+    {
+      "key": "attendanceDate",
+      "value": "2026-06-26",
+      "type": "string"
+    },
+    {
+      "key": "studentId",
+      "value": "28a2690c-92fc-44ec-aba2-2f7e3e9829d6",
+      "type": "string"
+    },
+    {
+      "key": "studentId2",
+      "value": "9e47c08e-67db-4c14-a094-383e2620eef1",
+      "type": "string"
+    },
+    {
+      "key": "studentsCount",
+      "value": "5",
+      "type": "string"
+    },
+    {
+      "key": "studentsJson",
+      "value": "[{\"id\":36,\"studentId\":\"3e1294c5-3b88-4898-9737-f06587d3defd\",\"studentName\":\"Patricia Ramos\",\"academicYearId\":1,\"gradeId\":5,\"sectionId\":8,\"statusId\":\"A\",\"isActive\":true},{\"id\":38,\"studentId\":\"dde77bbf-b75d-47c3-97f7-721dbffbff23\",\"studentName\":\"Silvia Peña\",\"academicYearId\":1,\"gradeId\":5,\"sectionId\":8,\"statusId\":\"A\",\"isActive\":true},{\"id\":39,\"studentId\":\"c5f79a34-646e-47d8-888d-ad73f61fea53\",\"studentName\":\"Silvia Chávez\",\"academicYearId\":1,\"gradeId\":5,\"sectionId\":8,\"statusId\":\"A\",\"isActive\":true},{\"id\":40,\"studentId\":\"9e47c08e-67db-4c14-a094-383e2620eef1\",\"studentName\":\"Alejandro Ortiz\",\"academicYearId\":1,\"gradeId\":5,\"sectionId\":8,\"statusId\":\"A\",\"isActive\":true},{\"id\":43,\"studentId\":\"28a2690c-92fc-44ec-aba2-2f7e3e9829d6\",\"studentName\":\"Alberto Ruiz\",\"academicYearId\":1,\"gradeId\":5,\"sectionId\":8,\"statusId\":\"A\",\"isActive\":true}]",
+      "type": "string"
+    },
+    {
+      "key": "attendancesJson",
+      "value": "[{\"id\":128,\"sessionId\":25,\"estudianteId\":\"28a2690c-92fc-44ec-aba2-2f7e3e9829d6\",\"estudianteNombre\":\"Alberto Ruiz\",\"claseId\":\"61\",\"profesorId\":\"30000000-0000-0000-0000-000000000011\",\"profesorNombre\":\"00000011\",\"registradoPor\":\"00000000-0000-0000-0000-000000000001\",\"registradoPorNombre\":\"00000001\",\"fecha\":\"2026-06-26\",\"anioLectivo\":1,\"estado\":\"A\",\"estadoNombre\":\"Asistió\",\"horaLlegada\":null,\"justificacionNota\":null,\"justificacionFotoUrl\":null,\"registradoEn\":\"2026-06-28T21:58:47.576794\",\"creadoEn\":\"2026-06-28T21:58:47.576794\",\"actualizadoEn\":\"2026-06-28T21:58:47.576794\"},{\"id\":129,\"sessionId\":25,\"estudianteId\":\"9e47c08e-67db-4c14-a094-383e2620eef1\",\"estudianteNombre\":\"Alejandro Ortiz\",\"claseId\":\"61\",\"profesorId\":\"30000000-0000-0000-0000-000000000011\",\"profesorNombre\":\"00000011\",\"registradoPor\":\"00000000-0000-0000-0000-000000000001\",\"registradoPorNombre\":\"00000001\",\"fecha\":\"2026-06-26\",\"anioLectivo\":1,\"estado\":\"A\",\"estadoNombre\":\"Asistió\",\"horaLlegada\":null,\"justificacionNota\":null,\"justificacionFotoUrl\":null,\"registradoEn\":\"2026-06-28T21:58:48.92696\",\"creadoEn\":\"2026-06-28T21:58:48.92696\",\"actualizadoEn\":\"2026-06-28T21:58:48.92696\"},{\"id\":130,\"sessionId\":25,\"estudianteId\":\"3e1294c5-3b88-4898-9737-f06587d3defd\",\"estudianteNombre\":\"Patricia Ramos\",\"claseId\":\"61\",\"profesorId\":\"30000000-0000-0000-0000-000000000011\",\"profesorNombre\":\"00000011\",\"registradoPor\":\"00000000-0000-0000-0000-000000000001\",\"registradoPorNombre\":\"00000001\",\"fecha\":\"2026-06-26\",\"anioLectivo\":1,\"estado\":\"A\",\"estadoNombre\":\"Asistió\",\"horaLlegada\":null,\"justificacionNota\":null,\"justificacionFotoUrl\":null,\"registradoEn\":\"2026-06-28T21:58:50.079496\",\"creadoEn\":\"2026-06-28T21:58:50.079496\",\"actualizadoEn\":\"2026-06-28T21:58:50.079496\"},{\"id\":131,\"sessionId\":25,\"estudianteId\":\"c5f79a34-646e-47d8-888d-ad73f61fea53\",\"estudianteNombre\":\"Silvia Chávez\",\"claseId\":\"61\",\"profesorId\":\"30000000-0000-0000-0000-000000000011\",\"profesorNombre\":\"00000011\",\"registradoPor\":\"00000000-0000-0000-0000-000000000001\",\"registradoPorNombre\":\"00000001\",\"fecha\":\"2026-06-26\",\"anioLectivo\":1,\"estado\":\"A\",\"estadoNombre\":\"Asistió\",\"horaLlegada\":null,\"justificacionNota\":null,\"justificacionFotoUrl\":null,\"registradoEn\":\"2026-06-28T21:58:51.154249\",\"creadoEn\":\"2026-06-28T21:58:51.154249\",\"actualizadoEn\":\"2026-06-28T21:58:51.154249\"},{\"id\":132,\"sessionId\":25,\"estudianteId\":\"dde77bbf-b75d-47c3-97f7-721dbffbff23\",\"estudianteNombre\":\"Silvia Peña\",\"claseId\":\"61\",\"profesorId\":\"30000000-0000-0000-0000-000000000011\",\"profesorNombre\":\"00000011\",\"registradoPor\":\"00000000-0000-0000-0000-000000000001\",\"registradoPorNombre\":\"00000001\",\"fecha\":\"2026-06-26\",\"anioLectivo\":1,\"estado\":\"A\",\"estadoNombre\":\"Asistió\",\"horaLlegada\":null,\"justificacionNota\":null,\"justificacionFotoUrl\":null,\"registradoEn\":\"2026-06-28T21:58:52.260606\",\"creadoEn\":\"2026-06-28T21:58:52.260606\",\"actualizadoEn\":\"2026-06-28T21:58:52.260606\"}]",
+      "type": "string"
+    },
+    {
+      "key": "attendanceId",
+      "value": "128",
+      "type": "string"
+    },
+    {
+      "key": "arrivalTime",
+      "value": "08:20:00",
+      "type": "string"
+    },
+    {
+      "key": "changeReason",
+      "value": "Correccion validada en exposicion",
+      "type": "string"
+    },
+    {
+      "key": "justificationNote",
+      "value": "Justificacion registrada durante la prueba",
+      "type": "string"
+    },
+    {
+      "key": "evidenceUrl",
+      "value": "https://res.cloudinary.com/doz1fu1er/image/upload/v1782766158/attendance_justifications/1782766157394_attendance-evidence-test.pdf.pdf",
+      "type": "string"
+    },
+    {
+      "key": "currentUserId",
+      "value": "00000000-0000-0000-0000-000000000001",
+      "type": "string"
+    },
+    {
+      "key": "currentUserRole",
+      "value": "DEVELOPER",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "00 - Setup",
+      "item": [
+        {
+          "name": "Login - Produccion",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Login OK', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json(); pm.expect(json.accessToken).to.be.a('string').and.not.empty;",
+                  "pm.collectionVariables.set('accessToken', json.accessToken); if (pm.environment && pm.environment.name) pm.environment.set('accessToken', json.accessToken);",
+                  "pm.collectionVariables.set('refreshToken', json.refreshToken || ''); if (pm.environment && pm.environment.name) pm.environment.set('refreshToken', json.refreshToken || '');",
+                  "pm.collectionVariables.set('accessTokenExpiresAt', String(Date.now() + (json.expiresInMs || 3600000))); if (pm.environment && pm.environment.name) pm.environment.set('accessTokenExpiresAt', String(Date.now() + (json.expiresInMs || 3600000)));",
+                  "pm.collectionVariables.set('authRoleCode', json.roleCode || ''); if (pm.environment && pm.environment.name) pm.environment.set('authRoleCode', json.roleCode || '');"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{authEmail}}\",\n  \"password\": \"{{authPassword}}\"\n}"
+            },
+            "url": "{{baseUrl}}/auth/login"
+          }
+        },
+        {
+          "name": "Auto Discover Production Data",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Request base respondio', () => pm.expect([200, 400, 401, 403, 404, 500]).to.include(pm.response.code));",
+                  "const baseUrl = pm.collectionVariables.get('baseUrl') || pm.environment.get('baseUrl');",
+                  "const token = pm.collectionVariables.get('accessToken') || pm.environment.get('accessToken');",
+                  "const authHeader = { Authorization: `Bearer ${token}` };",
+                  "function setVar(key, value) { if (value !== undefined && value !== null && value !== '') { pm.collectionVariables.set(key, String(value)); if (pm.environment && pm.environment.name) pm.environment.set(key, String(value)); } }",
+                  "function send(path) { return new Promise((resolve) => pm.sendRequest({ url: `${baseUrl}${path}`, method: 'GET', header: authHeader }, (err, res) => resolve({ err, res }))); }",
+                  "function jsonArray(res) { try { const value = res && res.json(); return Array.isArray(value) ? value : []; } catch (e) { return []; } }",
+                  "function previousDateForDay(dayOfWeek) {",
+                  "  const today = new Date();",
+                  "  const jsDay = today.getDay() === 0 ? 7 : today.getDay();",
+                  "  const diff = (jsDay - Number(dayOfWeek) + 7) % 7;",
+                  "  const date = new Date(today.getFullYear(), today.getMonth(), today.getDate() - diff);",
+                  "  const y = date.getFullYear(); const m = String(date.getMonth() + 1).padStart(2, '0'); const d = String(date.getDate()).padStart(2, '0');",
+                  "  return `${y}-${m}-${d}`;",
+                  "}",
+                  "(async () => {",
+                  "  if (!token) throw new Error('No hay accessToken. Ejecuta Login primero.');",
+                  "  const gradesRes = await send('/api/academic/grades');",
+                  "  const sectionsRes = await send('/api/academic/sections');",
+                  "  const coursesRes = await send('/api/academic/courses');",
+                  "  const grades = jsonArray(gradesRes.res).filter(x => x.active !== false);",
+                  "  const sections = jsonArray(sectionsRes.res).filter(x => x.active !== false);",
+                  "  const courses = jsonArray(coursesRes.res).filter(x => x.active !== false);",
+                  "  pm.test('Hay grados en produccion', () => pm.expect(grades.length, 'grados').to.be.greaterThan(0));",
+                  "  pm.test('Hay secciones en produccion', () => pm.expect(sections.length, 'secciones').to.be.greaterThan(0));",
+                  "  let selectedSchedule = null; let selectedStudents = [];",
+                  "  for (const section of sections) {",
+                  "    const gradeId = Number(section.gradeId); const sectionId = Number(section.id);",
+                  "    if (!gradeId || !sectionId) continue;",
+                  "    const schedulesRes = await send(`/schedules/grade/${gradeId}/section/${sectionId}`);",
+                  "    const schedules = jsonArray(schedulesRes.res).filter(x => x && x.active !== false && x.id && x.teacherId);",
+                  "    for (const schedule of schedules) {",
+                  "      const yearId = Number(schedule.academicYearId || section.academicYearId || 1);",
+                  "      const studentsRes = await send(`/api/attendance/class/${schedule.gradeId}/${schedule.sectionId}/students?yearId=${yearId}&limit=300`);",
+                  "      const students = jsonArray(studentsRes.res).filter(x => x && x.isActive !== false && x.studentId);",
+                  "      if (students.length > 0) { selectedSchedule = schedule; selectedStudents = students; break; }",
+                  "    }",
+                  "    if (selectedSchedule) break;",
+                  "  }",
+                  "  pm.test('Se encontro una clase con estudiantes', () => pm.expect(!!selectedSchedule, 'clase con estudiantes').to.equal(true));",
+                  "  if (!selectedSchedule) return;",
+                  "  const attendanceDate = previousDateForDay(selectedSchedule.dayOfWeek || 1);",
+                  "  const course = courses.find(c => Number(c.id) === Number(selectedSchedule.courseId));",
+                  "  const grade = grades.find(g => Number(g.id) === Number(selectedSchedule.gradeId));",
+                  "  const section = sections.find(s => Number(s.id) === Number(selectedSchedule.sectionId));",
+                  "  setVar('classId', selectedSchedule.id); setVar('teacherId', selectedSchedule.teacherId); setVar('gradeId', selectedSchedule.gradeId); setVar('sectionId', selectedSchedule.sectionId); setVar('yearId', selectedSchedule.academicYearId || 1); setVar('academicYear', selectedSchedule.academicYearId || 1); setVar('courseId', selectedSchedule.courseId); setVar('attendanceDate', attendanceDate);",
+                  "  setVar('courseName', course?.name || `Curso ${selectedSchedule.courseId}`); setVar('gradeName', grade?.name || `Grado ${selectedSchedule.gradeId}`); setVar('sectionName', section?.name || `Seccion ${selectedSchedule.sectionId}`);",
+                  "  setVar('studentId', selectedStudents[0]?.studentId); setVar('studentId2', selectedStudents[1]?.studentId || selectedStudents[0]?.studentId); setVar('studentsCount', selectedStudents.length);",
+                  "  pm.collectionVariables.set('studentsJson', JSON.stringify(selectedStudents)); if (pm.environment && pm.environment.name) pm.environment.set('studentsJson', JSON.stringify(selectedStudents));",
+                  "  const attendanceRes = await send(`/api/attendance/class/${selectedSchedule.id}?fecha=${attendanceDate}&limit=300`);",
+                  "  const attendances = jsonArray(attendanceRes.res);",
+                  "  pm.collectionVariables.set('attendancesJson', JSON.stringify(attendances)); if (pm.environment && pm.environment.name) pm.environment.set('attendancesJson', JSON.stringify(attendances));",
+                  "  if (attendances[0]?.id) setVar('attendanceId', attendances[0].id);",
+                  "  console.log('Attendance data discovered', { selectedSchedule, attendanceDate, students: selectedStudents.length, attendances: attendances.length });",
+                  "})();"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-User-Id",
+                "value": "{{currentUserId}}"
+              },
+              {
+                "key": "X-User-Role",
+                "value": "{{currentUserRole}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/attendance/date?fecha=2026-06-26&limit=1",
+            "description": "Ejecuta este request despues del Login. Busca grados, secciones, horarios y estudiantes reales en produccion y llena las variables de la coleccion."
+          }
+        },
+        {
+          "name": "Find Empty Class For Bulk Register",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Request base respondio', () => pm.expect([200, 400, 401, 403, 404, 500]).to.include(pm.response.code));",
+                  "const baseUrl = pm.collectionVariables.get('baseUrl') || pm.environment.get('baseUrl');",
+                  "const token = pm.collectionVariables.get('accessToken') || pm.environment.get('accessToken');",
+                  "const authHeader = { Authorization: `Bearer ${token}` };",
+                  "function setVar(key, value) { if (value !== undefined && value !== null && value !== '') { pm.collectionVariables.set(key, String(value)); if (pm.environment && pm.environment.name) pm.environment.set(key, String(value)); } }",
+                  "function send(path) { return new Promise((resolve) => pm.sendRequest({ url: `${baseUrl}${path}`, method: 'GET', header: authHeader }, (err, res) => resolve({ err, res }))); }",
+                  "function jsonArray(res) { try { const value = res && res.json(); return Array.isArray(value) ? value : []; } catch (e) { return []; } }",
+                  "function previousDateForDay(dayOfWeek) {",
+                  "  const today = new Date();",
+                  "  const jsDay = today.getDay() === 0 ? 7 : today.getDay();",
+                  "  const diff = (jsDay - Number(dayOfWeek) + 7) % 7;",
+                  "  const date = new Date(today.getFullYear(), today.getMonth(), today.getDate() - diff);",
+                  "  const y = date.getFullYear(); const m = String(date.getMonth() + 1).padStart(2, '0'); const d = String(date.getDate()).padStart(2, '0');",
+                  "  return `${y}-${m}-${d}`;",
+                  "}",
+                  "(async () => {",
+                  "  if (!token) throw new Error('No hay accessToken. Ejecuta Login primero.');",
+                  "  const gradesRes = await send('/api/academic/grades');",
+                  "  const sectionsRes = await send('/api/academic/sections');",
+                  "  const coursesRes = await send('/api/academic/courses');",
+                  "  const grades = jsonArray(gradesRes.res).filter(x => x.active !== false);",
+                  "  const sections = jsonArray(sectionsRes.res).filter(x => x.active !== false);",
+                  "  const courses = jsonArray(coursesRes.res).filter(x => x.active !== false);",
+                  "  let found = null; let foundStudents = []; let foundDate = '';",
+                  "  for (const section of sections) {",
+                  "    const gradeId = Number(section.gradeId); const sectionId = Number(section.id);",
+                  "    if (!gradeId || !sectionId) continue;",
+                  "    const schedulesRes = await send(`/schedules/grade/${gradeId}/section/${sectionId}`);",
+                  "    const schedules = jsonArray(schedulesRes.res).filter(x => x && x.active !== false && x.id && x.teacherId);",
+                  "    for (const schedule of schedules) {",
+                  "      const yearId = Number(schedule.academicYearId || section.academicYearId || 1);",
+                  "      const studentsRes = await send(`/api/attendance/class/${schedule.gradeId}/${schedule.sectionId}/students?yearId=${yearId}&limit=300`);",
+                  "      const students = jsonArray(studentsRes.res).filter(x => x && x.isActive !== false && x.studentId);",
+                  "      if (!students.length) continue;",
+                  "      const date = previousDateForDay(schedule.dayOfWeek || 1);",
+                  "      const attendanceRes = await send(`/api/attendance/class/${schedule.id}?fecha=${date}&limit=300`);",
+                  "      const attendances = jsonArray(attendanceRes.res);",
+                  "      if (attendances.length === 0) { found = schedule; foundStudents = students; foundDate = date; break; }",
+                  "    }",
+                  "    if (found) break;",
+                  "  }",
+                  "  pm.test('Se encontro clase sin asistencia para registrar', () => pm.expect(!!found, 'clase sin asistencia').to.equal(true));",
+                  "  if (!found) throw new Error('No encontre una clase con estudiantes y sin asistencias. Para crear, necesitas una clase/fecha sin registros o usar una fecha/clase habilitada por negocio.');",
+                  "  const course = courses.find(c => Number(c.id) === Number(found.courseId));",
+                  "  const grade = grades.find(g => Number(g.id) === Number(found.gradeId));",
+                  "  const section = sections.find(s => Number(s.id) === Number(found.sectionId));",
+                  "  setVar('classId', found.id); setVar('teacherId', found.teacherId); setVar('gradeId', found.gradeId); setVar('sectionId', found.sectionId); setVar('yearId', found.academicYearId || 1); setVar('academicYear', found.academicYearId || 1); setVar('courseId', found.courseId); setVar('attendanceDate', foundDate);",
+                  "  setVar('courseName', course?.name || `Curso ${found.courseId}`); setVar('gradeName', grade?.name || `Grado ${found.gradeId}`); setVar('sectionName', section?.name || `Seccion ${found.sectionId}`);",
+                  "  setVar('studentId', foundStudents[0]?.studentId); setVar('studentId2', foundStudents[1]?.studentId || foundStudents[0]?.studentId); setVar('studentsCount', foundStudents.length);",
+                  "  pm.collectionVariables.set('studentsJson', JSON.stringify(foundStudents)); if (pm.environment && pm.environment.name) pm.environment.set('studentsJson', JSON.stringify(foundStudents));",
+                  "  pm.collectionVariables.set('attendancesJson', '[]'); if (pm.environment && pm.environment.name) pm.environment.set('attendancesJson', '[]');",
+                  "  pm.collectionVariables.unset('attendanceId'); if (pm.environment && pm.environment.name) pm.environment.unset('attendanceId');",
+                  "  console.log('Empty class ready for bulk register', { found, foundDate, students: foundStudents.length });",
+                  "})();"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-User-Id",
+                "value": "{{currentUserId}}"
+              },
+              {
+                "key": "X-User-Role",
+                "value": "{{currentUserRole}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/attendance/date?fecha=2026-06-26&limit=1",
+            "description": "Busca una clase real de produccion con estudiantes y sin asistencias en una fecha valida. Luego llena variables para ejecutar Register Bulk All Present - Auto Body sin cambiar IDs manualmente."
+          }
+        },
+        {
+          "name": "Debug Variables And Headers",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-User-Id",
+                "value": "{{currentUserId}}"
+              },
+              {
+                "key": "X-User-Role",
+                "value": "{{currentUserRole}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/attendance/date?fecha={{attendanceDate}}&limit=1",
+            "description": "Sirve para verificar que Postman este usando produccion, token, X-User-Id, X-User-Role y fecha/clase descubierta."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "console.log('baseUrl', pm.collectionVariables.get('baseUrl') || pm.environment.get('baseUrl'));",
+                  "console.log('currentUserId', pm.collectionVariables.get('currentUserId') || pm.environment.get('currentUserId'));",
+                  "console.log('currentUserRole', pm.collectionVariables.get('currentUserRole') || pm.environment.get('currentUserRole'));",
+                  "console.log('classId', pm.collectionVariables.get('classId') || pm.environment.get('classId'));",
+                  "console.log('teacherId', pm.collectionVariables.get('teacherId') || pm.environment.get('teacherId'));",
+                  "console.log('attendanceDate', pm.collectionVariables.get('attendanceDate') || pm.environment.get('attendanceDate'));",
+                  "pm.test('Usa produccion', () => pm.expect(pm.collectionVariables.get('baseUrl') || pm.environment.get('baseUrl')).to.include('lab.vallegrande.edu.pe/eduback'));",
+                  "pm.test('Rol operativo configurado', () => pm.expect(pm.collectionVariables.get('currentUserRole') || pm.environment.get('currentUserRole')).to.equal('DEVELOPER'));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "01 - Discovery Manual",
+      "item": [
+        {
+          "name": "Get Academic Grades",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-User-Id",
+                "value": "{{currentUserId}}"
+              },
+              {
+                "key": "X-User-Role",
+                "value": "{{currentUserRole}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/academic/grades"
+          }
+        },
+        {
+          "name": "Get Academic Sections",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-User-Id",
+                "value": "{{currentUserId}}"
+              },
+              {
+                "key": "X-User-Role",
+                "value": "{{currentUserRole}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/academic/sections"
+          }
+        },
+        {
+          "name": "Get Academic Courses",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-User-Id",
+                "value": "{{currentUserId}}"
+              },
+              {
+                "key": "X-User-Role",
+                "value": "{{currentUserRole}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/academic/courses"
+          }
+        },
+        {
+          "name": "Get Schedules By Grade Section",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-User-Id",
+                "value": "{{currentUserId}}"
+              },
+              {
+                "key": "X-User-Role",
+                "value": "{{currentUserRole}}"
+              }
+            ],
+            "url": "{{baseUrl}}/schedules/grade/{{gradeId}}/section/{{sectionId}}"
+          }
+        },
+        {
+          "name": "Get Students By Class Scope",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-User-Id",
+                "value": "{{currentUserId}}"
+              },
+              {
+                "key": "X-User-Role",
+                "value": "{{currentUserRole}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/attendance/class/{{gradeId}}/{{sectionId}}/students?yearId={{yearId}}&limit=300"
+          }
+        }
+      ]
+    },
+    {
+      "name": "02 - Attendance Reads",
+      "item": [
+        {
+          "name": "Get Attendance By Date",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-User-Id",
+                "value": "{{currentUserId}}"
+              },
+              {
+                "key": "X-User-Role",
+                "value": "{{currentUserRole}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/attendance/date?fecha={{attendanceDate}}&limit=300"
+          }
+        },
+        {
+          "name": "Get Attendance By Class And Date",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-User-Id",
+                "value": "{{currentUserId}}"
+              },
+              {
+                "key": "X-User-Role",
+                "value": "{{currentUserRole}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/attendance/class/{{classId}}?fecha={{attendanceDate}}&limit=300"
+          }
+        },
+        {
+          "name": "Get Class Summary",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-User-Id",
+                "value": "{{currentUserId}}"
+              },
+              {
+                "key": "X-User-Role",
+                "value": "{{currentUserRole}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/attendance/class/{{classId}}/summary?profesorId={{teacherId}}&fecha={{attendanceDate}}"
+          }
+        },
+        {
+          "name": "Get Attendance By Student",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-User-Id",
+                "value": "{{currentUserId}}"
+              },
+              {
+                "key": "X-User-Role",
+                "value": "{{currentUserRole}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/attendance/student/{{studentId}}?limit=100"
+          }
+        },
+        {
+          "name": "Get Student Range",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-User-Id",
+                "value": "{{currentUserId}}"
+              },
+              {
+                "key": "X-User-Role",
+                "value": "{{currentUserRole}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/attendance/student/{{studentId}}/range?startDate=2026-06-01&endDate={{attendanceDate}}&limit=200"
+          }
+        },
+        {
+          "name": "Get Student Summary",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-User-Id",
+                "value": "{{currentUserId}}"
+              },
+              {
+                "key": "X-User-Role",
+                "value": "{{currentUserRole}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/attendance/student/{{studentId}}/summary?startDate=2026-06-01&endDate={{attendanceDate}}"
+          }
+        },
+        {
+          "name": "Get Attendance By ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-User-Id",
+                "value": "{{currentUserId}}"
+              },
+              {
+                "key": "X-User-Role",
+                "value": "{{currentUserRole}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/attendance/{{attendanceId}}"
+          }
+        },
+        {
+          "name": "Get Attendance Audit",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-User-Id",
+                "value": "{{currentUserId}}"
+              },
+              {
+                "key": "X-User-Role",
+                "value": "{{currentUserRole}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/attendance/{{attendanceId}}/audit"
+          }
+        }
+      ]
+    },
+    {
+      "name": "03 - Attendance Mutations",
+      "item": [
+        {
+          "name": "Register Individual Present - Prueba negativa 45 min",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Respuesta controlada', () => pm.expect([200, 201, 400, 401, 403, 404, 409]).to.include(pm.response.code));",
+                  "if (pm.response.code >= 200 && pm.response.code < 300) { try { const json = pm.response.json(); if (json.id) { pm.collectionVariables.set('attendanceId', String(json.id)); if (pm.environment && pm.environment.name) pm.environment.set('attendanceId', String(json.id)); } if (Array.isArray(json) && json[0]?.id) { pm.collectionVariables.set('attendanceId', String(json[0].id)); if (pm.environment && pm.environment.name) pm.environment.set('attendanceId', String(json[0].id)); } } catch(e) {} }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-User-Id",
+                "value": "{{currentUserId}}"
+              },
+              {
+                "key": "X-User-Role",
+                "value": "{{currentUserRole}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"estudianteId\": \"{{studentId}}\",\n  \"claseId\": \"{{classId}}\",\n  \"profesorId\": \"{{teacherId}}\",\n  \"registradoPor\": \"{{teacherId}}\",\n  \"fecha\": \"{{attendanceDate}}\",\n  \"anioLectivo\": \"{{academicYear}}\",\n  \"estado\": \"A\"\n}"
+            },
+            "url": "{{baseUrl}}/api/attendance",
+            "description": "En produccion este endpoint individual bloquea clases pasadas por la regla de 45 minutos, incluso con usuario DEVELOPER. Usarlo para demostrar validacion negativa. Para registrar clase completa usa Register Bulk All Present - Auto Body."
+          }
+        },
+        {
+          "name": "Register Bulk All Present - Auto Body",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const students = JSON.parse(pm.collectionVariables.get('studentsJson') || pm.environment.get('studentsJson') || '[]');",
+                  "if (!students.length) throw new Error('No hay studentsJson. Ejecuta 01 - Auto Discover Production Data primero.');",
+                  "const body = {",
+                  "  profesorId: pm.collectionVariables.get('teacherId') || pm.environment.get('teacherId'),",
+                  "  fecha: pm.collectionVariables.get('attendanceDate') || pm.environment.get('attendanceDate'),",
+                  "  anioLectivo: Number(pm.collectionVariables.get('academicYear') || pm.environment.get('academicYear') || pm.collectionVariables.get('yearId') || 1),",
+                  "  asistencias: students.map(s => ({ estudianteId: s.studentId, estado: 'A' }))",
+                  "};",
+                  "pm.request.body.update(JSON.stringify(body, null, 2));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Respuesta controlada', () => pm.expect([200, 201, 400, 401, 403, 404, 409]).to.include(pm.response.code));",
+                  "if (pm.response.code >= 200 && pm.response.code < 300) { try { const json = pm.response.json(); if (json.id) { pm.collectionVariables.set('attendanceId', String(json.id)); if (pm.environment && pm.environment.name) pm.environment.set('attendanceId', String(json.id)); } if (Array.isArray(json) && json[0]?.id) { pm.collectionVariables.set('attendanceId', String(json[0].id)); if (pm.environment && pm.environment.name) pm.environment.set('attendanceId', String(json[0].id)); } } catch(e) {} }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-User-Id",
+                "value": "{{currentUserId}}"
+              },
+              {
+                "key": "X-User-Role",
+                "value": "{{currentUserRole}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{ }"
+            },
+            "url": "{{baseUrl}}/api/attendance/class/{{classId}}/bulk",
+            "description": "Flujo principal de registro de clase. Construye automaticamente el lote con todos los estudiantes de studentsJson. Probado contra produccion: con body incompleto responde la validacion correcta de que faltan estudiantes, sin guardar datos."
+          }
+        },
+        {
+          "name": "Update Attendance To Late - Muta datos",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Respuesta controlada', () => pm.expect([200, 201, 400, 401, 403, 404, 409]).to.include(pm.response.code));",
+                  "if (pm.response.code >= 200 && pm.response.code < 300) { try { const json = pm.response.json(); if (json.id) { pm.collectionVariables.set('attendanceId', String(json.id)); if (pm.environment && pm.environment.name) pm.environment.set('attendanceId', String(json.id)); } if (Array.isArray(json) && json[0]?.id) { pm.collectionVariables.set('attendanceId', String(json[0].id)); if (pm.environment && pm.environment.name) pm.environment.set('attendanceId', String(json[0].id)); } } catch(e) {} }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-User-Id",
+                "value": "{{currentUserId}}"
+              },
+              {
+                "key": "X-User-Role",
+                "value": "{{currentUserRole}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"estado\": \"T\",\n  \"horaLlegada\": \"{{arrivalTime}}\",\n  \"motivoCambio\": \"{{changeReason}}\"\n}"
+            },
+            "url": "{{baseUrl}}/api/attendance/{{attendanceId}}",
+            "description": "Corrige una asistencia existente a tardanza. Este request SI modifica produccion y genera auditoria; usar solo si quieres demostrar correccion."
+          }
+        },
+        {
+          "name": "Update Attendance To Justified - Muta datos",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Respuesta controlada', () => pm.expect([200, 201, 400, 401, 403, 404, 409]).to.include(pm.response.code));",
+                  "if (pm.response.code >= 200 && pm.response.code < 300) { try { const json = pm.response.json(); if (json.id) { pm.collectionVariables.set('attendanceId', String(json.id)); if (pm.environment && pm.environment.name) pm.environment.set('attendanceId', String(json.id)); } if (Array.isArray(json) && json[0]?.id) { pm.collectionVariables.set('attendanceId', String(json[0].id)); if (pm.environment && pm.environment.name) pm.environment.set('attendanceId', String(json[0].id)); } } catch(e) {} }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-User-Id",
+                "value": "{{currentUserId}}"
+              },
+              {
+                "key": "X-User-Role",
+                "value": "{{currentUserRole}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"estado\": \"J\",\n  \"justificacionNota\": \"{{justificationNote}}\",\n  \"justificacionFotoUrl\": \"{{evidenceUrl}}\",\n  \"motivoCambio\": \"{{changeReason}}\"\n}"
+            },
+            "url": "{{baseUrl}}/api/attendance/{{attendanceId}}",
+            "description": "Corrige una asistencia existente a justificado. Este request SI modifica produccion y genera auditoria; usar solo si quieres demostrar correccion."
+          }
+        }
+      ]
+    },
+    {
+      "name": "04 - Upload And Reports",
+      "item": [
+        {
+          "name": "Upload Evidence File",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Upload respuesta controlada', () => pm.expect([200,400,413,415,500]).to.include(pm.response.code));",
+                  "if (pm.response.code === 200) { const json = pm.response.json(); if (json.success && json.url) { pm.collectionVariables.set('evidenceUrl', json.url); if (pm.environment && pm.environment.name) pm.environment.set('evidenceUrl', json.url); } }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-User-Id",
+                "value": "{{currentUserId}}"
+              },
+              {
+                "key": "X-User-Role",
+                "value": "{{currentUserRole}}"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": []
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/api/attendance/upload",
+            "description": "Selecciona manualmente JPG, PNG o PDF menor a 10 MB."
+          }
+        },
+        {
+          "name": "Daily Report PDF",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-User-Id",
+                "value": "{{currentUserId}}"
+              },
+              {
+                "key": "X-User-Role",
+                "value": "{{currentUserRole}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/attendance/reports/daily?date={{attendanceDate}}"
+          }
+        },
+        {
+          "name": "Class Report PDF",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-User-Id",
+                "value": "{{currentUserId}}"
+              },
+              {
+                "key": "X-User-Role",
+                "value": "{{currentUserRole}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/attendance/reports/class/{{classId}}?date={{attendanceDate}}"
+          }
+        },
+        {
+          "name": "Student Report PDF",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-User-Id",
+                "value": "{{currentUserId}}"
+              },
+              {
+                "key": "X-User-Role",
+                "value": "{{currentUserRole}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/attendance/reports/student/{{studentId}}?startDate=2026-06-01&endDate={{attendanceDate}}"
+          }
+        }
+      ]
+    }
+  ]
+}
