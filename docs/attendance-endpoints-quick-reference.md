@@ -141,6 +141,28 @@ Usa Register Bulk All Present - Auto Body para el flujo de clase completa.
 | `Class Report PDF` | `GET` | `/api/attendance/reports/class/{classId}?date={attendanceDate}` | Descarga reporte de una clase. | Profesor dueño / roles operativos. |
 | `Student Report PDF` | `GET` | `/api/attendance/reports/student/{studentId}?startDate={date}&endDate={date}` | Descarga reporte de un estudiante. | Padre / estudiante / roles operativos. |
 
+## 05 - Demo Transaccion Asistencia
+
+Esta carpeta esta preparada para exposicion con datos reales que ya respondieron `200 OK`.
+
+| Request en Postman | Metodo | Endpoint | Para que sirve |
+| --- | --- | --- | --- |
+| `Register Demo Bulk Mixed States - Class 113` | `POST` | `/api/attendance/class/{demoClassId}/bulk` | Demuestra la transaccion principal: lote completo con presente, falta, tardanza y justificado. |
+| `Get Demo Class Attendance - Class 113` | `GET` | `/api/attendance/class/{demoClassId}?fecha={demoAttendanceDate}` | Consulta el resultado guardado del lote. |
+| `Get Demo Class Summary - Class 113` | `GET` | `/api/attendance/class/{demoClassId}/summary?profesorId={demoTeacherId}&fecha={demoAttendanceDate}` | Muestra el resumen de clase. |
+| `Get Demo Attendance Audit - Attendance 141` | `GET` | `/api/attendance/{demoAttendanceId}/audit` | Muestra auditoria de una asistencia del lote. |
+| `Restore Demo Bulk All Present - Class 113` | `POST` | `/api/attendance/class/{demoClassId}/bulk` | Opcional: deja todos los estudiantes como presentes despues de exponer. |
+
+Variables demo:
+
+| Variable | Valor |
+| --- | --- |
+| `demoClassId` | `113` |
+| `demoTeacherId` | `663b56d1-a5bd-4830-a8e2-96ebdb97b0da` |
+| `demoAttendanceDate` | `2026-06-29` |
+| `demoAcademicYear` | `1` |
+| `demoAttendanceId` | `141` |
+
 ## Roles resumidos
 
 | Rol | Puede |

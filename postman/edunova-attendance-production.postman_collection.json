@@ -201,6 +201,51 @@
       "key": "currentUserRole",
       "value": "DEVELOPER",
       "type": "string"
+    },
+    {
+      "key": "demoClassId",
+      "value": "113",
+      "type": "string"
+    },
+    {
+      "key": "demoTeacherId",
+      "value": "663b56d1-a5bd-4830-a8e2-96ebdb97b0da",
+      "type": "string"
+    },
+    {
+      "key": "demoAttendanceDate",
+      "value": "2026-06-29",
+      "type": "string"
+    },
+    {
+      "key": "demoAcademicYear",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "demoAttendanceId",
+      "value": "141",
+      "type": "string"
+    },
+    {
+      "key": "demoStudentId1",
+      "value": "2eb239db-c151-4c79-b680-436405583eff",
+      "type": "string"
+    },
+    {
+      "key": "demoStudentId2",
+      "value": "ce4a3ee3-a807-47fa-8ba0-717ad6cbe0ca",
+      "type": "string"
+    },
+    {
+      "key": "demoStudentId3",
+      "value": "a1a2ea9d-3538-4aae-935e-8e5939e6b1c3",
+      "type": "string"
+    },
+    {
+      "key": "demoStudentId4",
+      "value": "e588a4de-b468-47fb-a2f9-624542e1b89c",
+      "type": "string"
     }
   ],
   "item": [
@@ -943,6 +988,140 @@
               }
             ],
             "url": "{{baseUrl}}/api/attendance/reports/student/{{studentId}}?startDate=2026-06-01&endDate={{attendanceDate}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "05 - Demo Transaccion Asistencia",
+      "item": [
+        {
+          "name": "Register Demo Bulk Mixed States - Class 113",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Respuesta controlada', () => pm.expect([200, 201, 400, 401, 403, 404, 409]).to.include(pm.response.code));",
+                  "if (pm.response.code >= 200 && pm.response.code < 300) { const json = pm.response.json(); if (Array.isArray(json) && json[0]?.id) { pm.collectionVariables.set('demoAttendanceId', String(json[0].id)); if (pm.environment && pm.environment.name) pm.environment.set('demoAttendanceId', String(json[0].id)); } }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-User-Id",
+                "value": "{{currentUserId}}"
+              },
+              {
+                "key": "X-User-Role",
+                "value": "{{currentUserRole}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"profesorId\": \"{{demoTeacherId}}\",\n  \"fecha\": \"{{demoAttendanceDate}}\",\n  \"anioLectivo\": 1,\n  \"asistencias\": [\n    {\n      \"estudianteId\": \"{{demoStudentId1}}\",\n      \"estado\": \"A\",\n      \"motivoCambio\": \"Demostracion de registro masivo con diferentes estados\"\n    },\n    {\n      \"estudianteId\": \"{{demoStudentId2}}\",\n      \"estado\": \"F\",\n      \"motivoCambio\": \"Demostracion de falta en registro masivo\"\n    },\n    {\n      \"estudianteId\": \"{{demoStudentId3}}\",\n      \"estado\": \"T\",\n      \"horaLlegada\": \"08:20:00\",\n      \"motivoCambio\": \"Demostracion de tardanza en registro masivo\"\n    },\n    {\n      \"estudianteId\": \"{{demoStudentId4}}\",\n      \"estado\": \"J\",\n      \"justificacionNota\": \"Justificacion presentada por el apoderado para la demostracion\",\n      \"justificacionFotoUrl\": \"{{evidenceUrl}}\",\n      \"motivoCambio\": \"Demostracion de justificacion en registro masivo\"\n    }\n  ]\n}"
+            },
+            "url": "{{baseUrl}}/api/attendance/class/{{demoClassId}}/bulk",
+            "description": "Demo principal de la transaccion: registra/corrige un lote completo con estados diferentes en la clase 113. Si ya existian registros, genera auditoria por correccion."
+          }
+        },
+        {
+          "name": "Get Demo Class Attendance - Class 113",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-User-Id",
+                "value": "{{currentUserId}}"
+              },
+              {
+                "key": "X-User-Role",
+                "value": "{{currentUserRole}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/attendance/class/{{demoClassId}}?fecha={{demoAttendanceDate}}&limit=300",
+            "description": "Consulta las asistencias resultantes de la clase demo."
+          }
+        },
+        {
+          "name": "Get Demo Class Summary - Class 113",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-User-Id",
+                "value": "{{currentUserId}}"
+              },
+              {
+                "key": "X-User-Role",
+                "value": "{{currentUserRole}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/attendance/class/{{demoClassId}}/summary?profesorId={{demoTeacherId}}&fecha={{demoAttendanceDate}}",
+            "description": "Muestra el resumen de la transaccion: presentes, faltas, tardanzas, justificados y pendientes."
+          }
+        },
+        {
+          "name": "Get Demo Attendance Audit - Attendance 141",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-User-Id",
+                "value": "{{currentUserId}}"
+              },
+              {
+                "key": "X-User-Role",
+                "value": "{{currentUserRole}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/attendance/{{demoAttendanceId}}/audit",
+            "description": "Muestra la auditoria generada para una asistencia del lote demo."
+          }
+        },
+        {
+          "name": "Restore Demo Bulk All Present - Class 113",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Respuesta controlada', () => pm.expect([200, 201, 400, 401, 403, 404, 409]).to.include(pm.response.code));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-User-Id",
+                "value": "{{currentUserId}}"
+              },
+              {
+                "key": "X-User-Role",
+                "value": "{{currentUserRole}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"profesorId\": \"{{demoTeacherId}}\",\n  \"fecha\": \"{{demoAttendanceDate}}\",\n  \"anioLectivo\": 1,\n  \"asistencias\": [\n    {\n      \"estudianteId\": \"{{demoStudentId1}}\",\n      \"estado\": \"A\",\n      \"motivoCambio\": \"Restauracion posterior a demostracion\"\n    },\n    {\n      \"estudianteId\": \"{{demoStudentId2}}\",\n      \"estado\": \"A\",\n      \"motivoCambio\": \"Restauracion posterior a demostracion\"\n    },\n    {\n      \"estudianteId\": \"{{demoStudentId3}}\",\n      \"estado\": \"A\",\n      \"motivoCambio\": \"Restauracion posterior a demostracion\"\n    },\n    {\n      \"estudianteId\": \"{{demoStudentId4}}\",\n      \"estado\": \"A\",\n      \"motivoCambio\": \"Restauracion posterior a demostracion\"\n    }\n  ]\n}"
+            },
+            "url": "{{baseUrl}}/api/attendance/class/{{demoClassId}}/bulk",
+            "description": "Opcional: devuelve todas las asistencias demo a presente despues de exponer."
           }
         }
       ]

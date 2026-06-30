@@ -163,6 +163,33 @@ Para registrar una clase completa, usa el endpoint masivo `POST /api/attendance/
 
 Los requests `Update Attendance To Late - Muta datos` y `Update Attendance To Justified - Muta datos` modifican produccion y generan auditoria. Uselos solo si necesitas demostrar correccion.
 
+### 6. Demo lista para exposicion
+
+Usar la carpeta:
+
+```text
+05 - Demo Transaccion Asistencia
+```
+
+Orden recomendado:
+
+```text
+1. Register Demo Bulk Mixed States - Class 113
+2. Get Demo Class Attendance - Class 113
+3. Get Demo Class Summary - Class 113
+4. Get Demo Attendance Audit - Attendance 141
+```
+
+Esta demo usa:
+
+```text
+classId: 113
+teacherId: 663b56d1-a5bd-4830-a8e2-96ebdb97b0da
+fecha: 2026-06-29
+```
+
+Sirve para demostrar que el frontend puede marcar alumno por alumno, pero el backend recibe un solo lote completo con estados diferentes.
+
 ## Reglas que se pueden demostrar
 
 - La asistencia se registra por clase y fecha.

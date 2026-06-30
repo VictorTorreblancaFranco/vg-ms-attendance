@@ -50,6 +50,34 @@ Corresponde a `Quinto de Secundaria - Seccion B`, con 5 estudiantes y asistencia
 5. Ejecutar `04 - Upload And Reports` con `Send and Download` para los PDF.
 6. Si necesitas demostrar guardado real, ejecutar `03 - Attendance Mutations`.
 
+## Demo directa de transaccion
+
+Para mostrar al profesor la transaccion completa en Postman, usa la carpeta:
+
+```text
+05 - Demo Transaccion Asistencia
+```
+
+Orden recomendado:
+
+1. `Register Demo Bulk Mixed States - Class 113`
+2. `Get Demo Class Attendance - Class 113`
+3. `Get Demo Class Summary - Class 113`
+4. `Get Demo Attendance Audit - Attendance 141`
+
+Ese flujo demuestra:
+
+- Registro/correccion masiva de una clase.
+- Diferentes estados en un mismo lote: presente, falta, tardanza y justificado.
+- Resumen de clase.
+- Auditoria por asistencia.
+
+Si quieres dejar la data limpia luego de exponer:
+
+```text
+Restore Demo Bulk All Present - Class 113
+```
+
 ## Importante
 
 El request `Register Bulk All Present - Auto Body` construye el body automaticamente con todos los estudiantes descubiertos en produccion.
