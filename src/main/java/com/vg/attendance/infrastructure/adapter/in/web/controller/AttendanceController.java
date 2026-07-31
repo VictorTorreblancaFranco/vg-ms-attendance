@@ -873,11 +873,7 @@ public class AttendanceController {
     }
 
     private Mono<String> resolveUserName(String userId, String token) {
-        Mono<UserResponse> request = token == null || token.isBlank()
-                ? userClient.getUserById(userId)
-                : userClient.getUserById(userId, token);
-
-        return request
+        return userClient.getUserById(userId)
                 .map(this::formatUserName)
                 .filter(name -> !name.isBlank());
     }

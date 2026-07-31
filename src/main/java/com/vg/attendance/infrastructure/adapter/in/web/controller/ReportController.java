@@ -83,7 +83,6 @@ public class ReportController {
             @RequestHeader(value = "X-User-Role", required = false) String role) {
 
         log.info("Reporte por clase: {}, fecha: {}", classId, date);
-        String token = authHeader.substring(7);
 
         return attendanceRepository.findByClaseIdAndFecha(classId, date)
             .collectList()
@@ -92,8 +91,16 @@ public class ReportController {
                 if (attendances.isEmpty()) {
                     return generatePdf(() -> generarPdfError("No hay asistencias para esta clase en la fecha seleccionada"));
                 }
-                return obtenerNombres(attendances, token)
-                    .flatMap(nombres -> generatePdf(() -> generarPdfClase(attendances, date, classId, nombres)));
+                return Mono.zip(
+                        obtenerNombres(attendances),
+                        obtenerNombresClases(attendances, authHeader)
+                    )
+                    .flatMap(tuple -> generatePdf(() -> generarPdfClase(
+                        attendances,
+                        date,
+                        tuple.getT2().getOrDefault(classId, "No disponible"),
+                        tuple.getT1()
+                    )));
             })
             .onErrorResume(ForbiddenException.class, e -> Mono.just(ResponseEntity.<byte[]>status(HttpStatus.FORBIDDEN).build()))
             .onErrorResume(e -> {
@@ -112,7 +119,6 @@ public class ReportController {
             @RequestHeader(value = "X-User-Role", required = false) String role) {
 
         log.info("Reporte por estudiante: {} desde {} hasta {}", studentId, startDate, endDate);
-        String token = authHeader.substring(7);
 
         return attendanceRepository.findByEstudianteIdAndFechaBetween(studentId, startDate, endDate)
             .collectList()
@@ -122,12 +128,14 @@ public class ReportController {
                     return generatePdf(() -> generarPdfError("No hay asistencias para este estudiante en el período seleccionado"));
                 }
                 return Mono.zip(
-                    obtenerNombreEstudiante(studentId, token),
-                    obtenerNombres(attendances, token)
+                    obtenerNombreEstudiante(studentId),
+                    obtenerNombres(attendances),
+                    obtenerNombresClases(attendances, authHeader)
                 ).flatMap(tuple -> {
                     String nombre = tuple.getT1();
                     Map<String, String> nombres = tuple.getT2();
-                    return generatePdf(() -> generarPdfEstudiante(attendances, studentId, nombre, startDate, endDate, nombres));
+                    Map<String, String> nombresClases = tuple.getT3();
+                    return generatePdf(() -> generarPdfEstudiante(attendances, nombre, startDate, endDate, nombres, nombresClases));
                 });
             })
             .onErrorResume(ForbiddenException.class, e -> Mono.just(ResponseEntity.<byte[]>status(HttpStatus.FORBIDDEN).build()))
@@ -145,7 +153,6 @@ public class ReportController {
             @RequestHeader(value = "X-User-Role", required = false) String role) {
 
         log.info("Reporte diario: {}", date);
-        String token = authHeader.substring(7);
 
         return attendanceRepository.findByFecha(date)
             .collectList()
@@ -155,7 +162,7 @@ public class ReportController {
                     return generatePdf(() -> generarPdfError("No hay asistencias registradas para esta fecha"));
                 }
                 return Mono.zip(
-                        obtenerNombres(attendances, token),
+                        obtenerNombres(attendances),
                         obtenerNombresClases(attendances, authHeader)
                     )
                     .flatMap(tuple -> generatePdf(() -> generarPdfDiario(attendances, date, tuple.getT1(), tuple.getT2())));
@@ -207,7 +214,7 @@ public class ReportController {
             .subscribeOn(Schedulers.boundedElastic());
     }
 
-    private Mono<Map<String, String>> obtenerNombres(List<Attendance> attendances, String token) {
+    private Mono<Map<String, String>> obtenerNombres(List<Attendance> attendances) {
         Map<String, String> nombres = new ConcurrentHashMap<>();
         
         // Obtener todos los IDs únicos de estudiantes y profesores
@@ -218,9 +225,9 @@ public class ReportController {
 
         return Mono.zip(
             userIds.stream()
-                .map(id -> userClient.getUserById(id, token)
-                    .map(user -> Map.entry(id, user.getFirstName() + " " + user.getLastName()))
-                    .defaultIfEmpty(Map.entry(id, id)))
+                .map(id -> userClient.getUserById(id)
+                    .map(user -> Map.entry(id, formatUserName(user)))
+                    .defaultIfEmpty(Map.entry(id, "No disponible")))
                 .collect(Collectors.toList()),
             results -> {
                 for (Object result : results) {
@@ -232,10 +239,27 @@ public class ReportController {
         );
     }
 
-    private Mono<String> obtenerNombreEstudiante(String studentId, String token) {
-        return userClient.getUserById(studentId, token)
-            .map(user -> user.getFirstName() + " " + user.getLastName())
-            .defaultIfEmpty(studentId);
+    private Mono<String> obtenerNombreEstudiante(String studentId) {
+        return userClient.getUserById(studentId)
+            .map(this::formatUserName)
+            .defaultIfEmpty("No disponible");
+    }
+
+    private String formatUserName(UserResponse user) {
+        String fullName = java.util.stream.Stream.of(user.getFirstName(), user.getLastName())
+            .filter(value -> value != null && !value.isBlank())
+            .map(String::trim)
+            .collect(Collectors.joining(" "));
+
+        if (!fullName.isBlank()) {
+            return fullName;
+        }
+
+        if (user.getEmail() != null && !user.getEmail().isBlank()) {
+            return user.getEmail();
+        }
+
+        return "No disponible";
     }
 
     private Mono<Map<String, String>> obtenerNombresClases(List<Attendance> attendances, String authHeader) {
@@ -261,7 +285,8 @@ public class ReportController {
             .collectMap(schedule -> schedule.getId().toString(), ScheduleResponse::getCourseId)
             .flatMap(classCourseIds -> {
                 if (classCourseIds.isEmpty()) {
-                    return Mono.just(Map.of());
+                    return Mono.just(classIds.stream()
+                        .collect(Collectors.toMap(id -> id, id -> "No disponible")));
                 }
 
                 Set<Long> courseIds = classCourseIds.values().stream()
@@ -277,8 +302,12 @@ public class ReportController {
                     .map(courseNames -> classCourseIds.entrySet().stream()
                         .collect(Collectors.toMap(
                             Map.Entry::getKey,
-                            entry -> courseNames.getOrDefault(entry.getValue(), "Clase " + entry.getKey())
-                        )));
+                            entry -> courseNames.getOrDefault(entry.getValue(), "No disponible")
+                        )))
+                    .map(resolved -> {
+                        classIds.forEach(id -> resolved.putIfAbsent(id, "No disponible"));
+                        return resolved;
+                    });
             });
     }
 
@@ -299,8 +328,8 @@ public class ReportController {
         }
     }
 
-    private ResponseEntity<byte[]> generarPdfClase(List<Attendance> attendances, LocalDate date, 
-                                                    String classId, Map<String, String> nombres) {
+    private ResponseEntity<byte[]> generarPdfClase(List<Attendance> attendances, LocalDate date,
+                                                    String nombreClase, Map<String, String> nombres) {
         try {
             ByteArrayOutputStream out = new ByteArrayOutputStream();
             Document doc = new Document(PageSize.A4);
@@ -338,7 +367,7 @@ public class ReportController {
             titulo.setAlignment(Element.ALIGN_CENTER);
             doc.add(titulo);
             
-            doc.add(new Paragraph("Clase ID: " + classId + " - Fecha: " + date.format(DateTimeFormatter.ofPattern("dd/MM/yyyy"))));
+            doc.add(new Paragraph("Clase: " + nombreClase + " - Fecha: " + date.format(DateTimeFormatter.ofPattern("dd/MM/yyyy"))));
             doc.add(new Paragraph(" "));
 
             long total = attendances.size();
@@ -391,7 +420,7 @@ public class ReportController {
                 String estado = estadoLabel(a);
                 Color estadoColor = estadoColor(a);
                 
-                String nombre = nombres.getOrDefault(a.getEstudianteId(), a.getEstudianteId());
+                String nombre = nombres.getOrDefault(a.getEstudianteId(), "No disponible");
                 if (nombre.length() > 30) nombre = nombre.substring(0, 27) + "...";
                 
                 table.addCell(new PdfPCell(new Phrase(String.valueOf(counter++), new Font(Font.HELVETICA, 9))));
@@ -421,7 +450,7 @@ public class ReportController {
 
             return ResponseEntity.ok()
                     .contentType(MediaType.APPLICATION_PDF)
-                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=reporte_clase_" + classId + "_" + date + ".pdf")
+                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=reporte_clase_" + date + ".pdf")
                     .body(out.toByteArray());
         } catch (Exception e) {
             log.error("Error generando PDF: {}", e.getMessage());
@@ -429,9 +458,10 @@ public class ReportController {
         }
     }
 
-    private ResponseEntity<byte[]> generarPdfEstudiante(List<Attendance> attendances, String studentId, 
-                                                         String nombreEstudiante, LocalDate startDate, 
-                                                         LocalDate endDate, Map<String, String> nombres) {
+    private ResponseEntity<byte[]> generarPdfEstudiante(List<Attendance> attendances,
+                                                         String nombreEstudiante, LocalDate startDate,
+                                                         LocalDate endDate, Map<String, String> nombres,
+                                                         Map<String, String> nombresClases) {
         try {
             ByteArrayOutputStream out = new ByteArrayOutputStream();
             Document doc = new Document(PageSize.A4);
@@ -522,7 +552,7 @@ public class ReportController {
                 Color estadoColor = estadoColor(a);
                 
                 table.addCell(new PdfPCell(new Phrase(a.getFecha().format(DateTimeFormatter.ofPattern("dd/MM/yyyy")), new Font(Font.HELVETICA, 9))));
-                table.addCell(new PdfPCell(new Phrase(a.getClaseId(), new Font(Font.HELVETICA, 9))));
+                table.addCell(new PdfPCell(new Phrase(nombresClases.getOrDefault(a.getClaseId(), "No disponible"), new Font(Font.HELVETICA, 9))));
                 
                 PdfPCell estadoCell = new PdfPCell(new Phrase(estado, new Font(Font.HELVETICA, 9, Font.BOLD, estadoColor)));
                 estadoCell.setHorizontalAlignment(Element.ALIGN_CENTER);
@@ -548,7 +578,7 @@ public class ReportController {
 
             return ResponseEntity.ok()
                     .contentType(MediaType.APPLICATION_PDF)
-                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=reporte_estudiante_" + studentId + ".pdf")
+                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=reporte_estudiante.pdf")
                     .body(out.toByteArray());
         } catch (Exception e) {
             log.error("Error generando PDF: {}", e.getMessage());
@@ -614,7 +644,7 @@ public class ReportController {
 
             for (Map.Entry<String, List<Attendance>> entry : porClase.entrySet()) {
                 String claseId = entry.getKey();
-                String nombreClase = nombresClases.getOrDefault(claseId, "Clase " + claseId);
+                String nombreClase = nombresClases.getOrDefault(claseId, "No disponible");
                 List<Attendance> asistencias = entry.getValue();
                 
                 for (int i = 0; i < asistencias.size(); i++) {
@@ -623,8 +653,8 @@ public class ReportController {
                     String estado = estadoLabel(a);
                     Color estadoColor = estadoColor(a);
                     
-                    String nombreEstudiante = nombres.getOrDefault(a.getEstudianteId(), a.getEstudianteId());
-                    String nombreProfesor = nombres.getOrDefault(a.getProfesorId(), a.getProfesorId());
+                    String nombreEstudiante = nombres.getOrDefault(a.getEstudianteId(), "No disponible");
+                    String nombreProfesor = nombres.getOrDefault(a.getProfesorId(), "No disponible");
                     
                     if (nombreProfesor.length() > 25) nombreProfesor = nombreProfesor.substring(0, 22) + "...";
                     
