@@ -353,6 +353,14 @@ public class AttendanceController {
                 ? ""
                 : item.getEstado().trim().toUpperCase(Locale.ROOT);
 
+            // A/F never carry evidence. Clear stale client fields instead of
+            // rejecting the whole batch when a previous J/T draft is reused.
+            if ("A".equals(status) || "F".equals(status)) {
+                item.setHoraLlegada(null);
+                item.setJustificacionNota(null);
+                item.setJustificacionFotoUrl(null);
+            }
+
             if ("T".equals(status) && item.getHoraLlegada() == null) {
                 throw new BusinessException("La tardanza requiere hora de llegada para el estudiante " + studentId);
             }
