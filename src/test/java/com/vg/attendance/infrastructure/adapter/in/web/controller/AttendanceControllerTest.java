@@ -107,6 +107,31 @@ class AttendanceControllerTest {
         assertThat(updateUseCase.updateCalls).isEqualTo(1);
     }
 
+    @Test
+    void getAttendanceByIdUsesReadableFallbackWhenUserServiceDoesNotResolveNames() {
+        AttendanceController controllerWithUnavailableUsers = new AttendanceController(
+            command -> Mono.empty(),
+            getUseCase,
+            new FakeGetAttendanceAuditUseCase(),
+            updateUseCase,
+            new AttendanceWebMapper(),
+            null,
+            null,
+            emptyUserClient());
+
+        StepVerifier.create(controllerWithUnavailableUsers.getAttendanceById(
+                7L,
+                "Bearer token",
+                "admin-1",
+                "ADMIN"))
+            .assertNext(response -> {
+                assertThat(response.getEstudianteNombre()).isEqualTo("Usuario no sincronizado");
+                assertThat(response.getProfesorNombre()).isEqualTo("Usuario no sincronizado");
+                assertThat(response.getRegistradoPorNombre()).isEqualTo("Usuario no sincronizado");
+            })
+            .verifyComplete();
+    }
+
     private AttendanceUpdateRequest updateRequest() {
         return AttendanceUpdateRequest.builder()
             .estado("F")
@@ -121,7 +146,7 @@ class AttendanceControllerTest {
             .claseId("class-1")
             .profesorId("teacher-1")
             .registradoPor("teacher-1")
-            .fecha(LocalDate.of(2026, 6, 5))
+            .fecha(LocalDate.now().minusDays(1))
             .anioLectivo(2026)
             .estado("A")
             .build();
@@ -133,7 +158,7 @@ class AttendanceControllerTest {
             .estudianteId("student-1")
             .profesorId("teacher-1")
             .registradoPor("teacher-1")
-            .fecha(LocalDate.of(2026, 6, 5))
+            .fecha(LocalDate.now().minusDays(1))
             .anioLectivo(2026)
             .estado("F")
             .build();
@@ -146,6 +171,15 @@ class AttendanceControllerTest {
             .body("""
                 {"id":"user-1","firstName":"Usuario","lastName":"Prueba","email":"user@test.com"}
                 """)
+            .build());
+        return new UserClient(WebClient.builder().exchangeFunction(exchangeFunction).build(),
+            CircuitBreakerRegistry.ofDefaults(),
+            RetryRegistry.ofDefaults());
+    }
+
+    private UserClient emptyUserClient() {
+        ExchangeFunction exchangeFunction = request -> Mono.just(ClientResponse
+            .create(HttpStatus.NOT_FOUND)
             .build());
         return new UserClient(WebClient.builder().exchangeFunction(exchangeFunction).build(),
             CircuitBreakerRegistry.ofDefaults(),

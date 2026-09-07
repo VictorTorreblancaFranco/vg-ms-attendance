@@ -4,6 +4,7 @@ import com.vg.attendance.domain.exception.BusinessException;
 import com.vg.attendance.domain.exception.ConflictException;
 import com.vg.attendance.domain.exception.ForbiddenException;
 import com.vg.attendance.domain.exception.NotFoundException;
+import com.vg.attendance.domain.exception.ServiceUnavailableException;
 import org.junit.jupiter.api.Test;
 import reactor.test.StepVerifier;
 
@@ -37,6 +38,31 @@ class GlobalExceptionHandlerTest {
 
         StepVerifier.create(handler.handleForbiddenException(new ForbiddenException("No tienes permisos")))
             .assertNext(response -> assertThat(response).containsEntry("code", "FORBIDDEN"))
+            .verifyComplete();
+    }
+
+    @Test
+    void serviceUnavailableUsesStableDependencyErrorContract() {
+        StepVerifier.create(handler.handleServiceUnavailableException(new ServiceUnavailableException(
+                "SCHEDULE_SERVICE_UNAVAILABLE",
+                "No se pudieron consultar los horarios. Intenta nuevamente.",
+                new RuntimeException("connection refused"))))
+            .assertNext(response -> {
+                assertThat(response).containsEntry("code", "SCHEDULE_SERVICE_UNAVAILABLE");
+                assertThat(response).containsEntry("message", "No se pudieron consultar los horarios. Intenta nuevamente.");
+                assertThat(response).containsEntry("status", 503);
+            })
+            .verifyComplete();
+    }
+
+    @Test
+    void unexpectedRuntimeExceptionDoesNotExposeInternalDetails() {
+        StepVerifier.create(handler.handleRuntimeException(new RuntimeException("Could not open R2DBC Connection")))
+            .assertNext(response -> {
+                assertThat(response).containsEntry("code", "INTERNAL_ERROR");
+                assertThat(response).containsEntry("message", "Ocurrió un error inesperado. Intenta nuevamente.");
+                assertThat(response).containsEntry("status", 500);
+            })
             .verifyComplete();
     }
 }

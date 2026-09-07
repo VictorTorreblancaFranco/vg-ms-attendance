@@ -55,6 +55,8 @@ import java.util.Set;
 public class AttendanceController {
 
     private static final ZoneId SCHOOL_ZONE = ZoneId.of("America/Lima");
+    private static final int BULK_SAVE_CONCURRENCY = 6;
+    private static final String USER_NOT_SYNCHRONIZED = "Usuario no sincronizado";
     
     private final RegisterAttendanceUseCase registerUseCase;
     private final GetAttendanceUseCase getUseCase;
@@ -327,15 +329,16 @@ public class AttendanceController {
 
         return getUseCase.getAttendanceByClass(claseId, request.getFecha())
             .collectMap(AttendanceResponse::getEstudianteId)
-            .flatMapMany(existing -> {
-                return Flux.fromIterable(request.getAsistencias())
-                    .concatMap(item -> saveBulkItem(claseId, request, token, userId, role, existing.get(item.getEstudianteId()), item));
-            });
+            .flatMapMany(existing -> Flux.fromIterable(request.getAsistencias())
+                .flatMapSequential(
+                    item -> saveBulkItem(claseId, request, userId, role, existing.get(item.getEstudianteId()), item),
+                    BULK_SAVE_CONCURRENCY)
+                .collectList()
+                .flatMapMany(savedAttendances -> enrichAttendances(savedAttendances, token)));
     }
 
     private Mono<AttendanceResponse> saveBulkItem(String claseId,
                                                   AttendanceBulkRequest request,
-                                                  String token,
                                                   String userId,
                                                   String role,
                                                   AttendanceResponse existing,
@@ -355,14 +358,13 @@ public class AttendanceController {
                 .justificacionFotoUrl(item.getJustificacionFotoUrl())
                 .totalEstudiantesSesion(request.getAsistencias().size())
                 .build();
-            return registerUseCase.registerAttendance(command)
-                .flatMap(response -> enrichAttendance(response, token));
+            return registerUseCase.registerAttendance(command);
         }
 
         if (hasSensitiveBulkChange(existing, item)
                 && (item.getMotivoCambio() == null || item.getMotivoCambio().isBlank())) {
             log.info("Se omite corrección masiva sin motivo para asistencia {} del estudiante {}", existing.getId(), existing.getEstudianteId());
-            return enrichAttendance(existing, token);
+            return Mono.just(existing);
         }
 
         UpdateAttendanceCommand command = UpdateAttendanceCommand.builder()
@@ -374,8 +376,7 @@ public class AttendanceController {
             .changedBy(userId)
             .changedByRole(role)
             .build();
-        return updateUseCase.updateAttendance(existing.getId(), command)
-            .flatMap(response -> enrichAttendance(response, token));
+        return updateUseCase.updateAttendance(existing.getId(), command);
     }
 
     private void validateBulkStudents(List<AttendanceBulkItemRequest> items, List<EnrollmentResponse> students) {
@@ -902,7 +903,7 @@ public class AttendanceController {
         if (id == null || id.isBlank()) {
             return "Sin asignar";
         }
-        return id.length() > 8 ? id.substring(id.length() - 8) : id;
+        return USER_NOT_SYNCHRONIZED;
     }
 
 }

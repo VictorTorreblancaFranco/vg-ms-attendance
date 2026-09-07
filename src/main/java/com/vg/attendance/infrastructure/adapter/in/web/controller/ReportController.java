@@ -50,6 +50,9 @@ import reactor.core.scheduler.Schedulers;
 @RequestMapping("/api/attendance/reports")
 public class ReportController {
 
+    private static final String USER_NOT_SYNCHRONIZED = "Usuario no sincronizado";
+    private static final String CLASS_NOT_SYNCHRONIZED = "Clase no sincronizada";
+
     private final AttendanceRepositoryPort attendanceRepository;
     private final UserClient userClient;
     private final ScheduleClient scheduleClient;
@@ -83,8 +86,6 @@ public class ReportController {
             @RequestHeader(value = "X-User-Role", required = false) String role) {
 
         log.info("Reporte por clase: {}, fecha: {}", classId, date);
-        String token = authHeader.substring(7);
-
         return attendanceRepository.findByClaseIdAndFecha(classId, date)
             .collectList()
             .flatMap(attendances -> filterReportAccess(attendances, userId, role))
@@ -92,8 +93,16 @@ public class ReportController {
                 if (attendances.isEmpty()) {
                     return generatePdf(() -> generarPdfError("No hay asistencias para esta clase en la fecha seleccionada"));
                 }
-                return obtenerNombres(attendances, token)
-                    .flatMap(nombres -> generatePdf(() -> generarPdfClase(attendances, date, classId, nombres)));
+                return Mono.zip(
+                        obtenerNombres(attendances),
+                        obtenerNombresClases(attendances, authHeader)
+                    )
+                    .flatMap(tuple -> generatePdf(() -> generarPdfClase(
+                        attendances,
+                        date,
+                        tuple.getT2().getOrDefault(classId, CLASS_NOT_SYNCHRONIZED),
+                        tuple.getT1()
+                    )));
             })
             .onErrorResume(ForbiddenException.class, e -> Mono.just(ResponseEntity.<byte[]>status(HttpStatus.FORBIDDEN).build()))
             .onErrorResume(e -> {
@@ -112,8 +121,6 @@ public class ReportController {
             @RequestHeader(value = "X-User-Role", required = false) String role) {
 
         log.info("Reporte por estudiante: {} desde {} hasta {}", studentId, startDate, endDate);
-        String token = authHeader.substring(7);
-
         return attendanceRepository.findByEstudianteIdAndFechaBetween(studentId, startDate, endDate)
             .collectList()
             .flatMap(attendances -> filterReportAccess(attendances, userId, role))
@@ -122,8 +129,8 @@ public class ReportController {
                     return generatePdf(() -> generarPdfError("No hay asistencias para este estudiante en el período seleccionado"));
                 }
                 return Mono.zip(
-                    obtenerNombreEstudiante(studentId, token),
-                    obtenerNombres(attendances, token)
+                    obtenerNombreEstudiante(studentId),
+                    obtenerNombres(attendances)
                 ).flatMap(tuple -> {
                     String nombre = tuple.getT1();
                     Map<String, String> nombres = tuple.getT2();
@@ -145,8 +152,6 @@ public class ReportController {
             @RequestHeader(value = "X-User-Role", required = false) String role) {
 
         log.info("Reporte diario: {}", date);
-        String token = authHeader.substring(7);
-
         return attendanceRepository.findByFecha(date)
             .collectList()
             .flatMap(attendances -> filterReportAccess(attendances, userId, role))
@@ -155,7 +160,7 @@ public class ReportController {
                     return generatePdf(() -> generarPdfError("No hay asistencias registradas para esta fecha"));
                 }
                 return Mono.zip(
-                        obtenerNombres(attendances, token),
+                        obtenerNombres(attendances),
                         obtenerNombresClases(attendances, authHeader)
                     )
                     .flatMap(tuple -> generatePdf(() -> generarPdfDiario(attendances, date, tuple.getT1(), tuple.getT2())));
@@ -207,20 +212,21 @@ public class ReportController {
             .subscribeOn(Schedulers.boundedElastic());
     }
 
-    private Mono<Map<String, String>> obtenerNombres(List<Attendance> attendances, String token) {
+    private Mono<Map<String, String>> obtenerNombres(List<Attendance> attendances) {
         Map<String, String> nombres = new ConcurrentHashMap<>();
         
         // Obtener todos los IDs únicos de estudiantes y profesores
         List<String> userIds = attendances.stream()
             .flatMap(a -> java.util.stream.Stream.of(a.getEstudianteId(), a.getProfesorId()))
+            .filter(id -> id != null && !id.isBlank())
             .distinct()
             .collect(Collectors.toList());
 
         return Mono.zip(
             userIds.stream()
-                .map(id -> userClient.getUserById(id, token)
-                    .map(user -> Map.entry(id, user.getFirstName() + " " + user.getLastName()))
-                    .defaultIfEmpty(Map.entry(id, id)))
+                .map(id -> userClient.getUserById(id)
+                    .map(user -> Map.entry(id, formatUserName(user)))
+                    .defaultIfEmpty(Map.entry(id, USER_NOT_SYNCHRONIZED)))
                 .collect(Collectors.toList()),
             results -> {
                 for (Object result : results) {
@@ -232,19 +238,38 @@ public class ReportController {
         );
     }
 
-    private Mono<String> obtenerNombreEstudiante(String studentId, String token) {
-        return userClient.getUserById(studentId, token)
-            .map(user -> user.getFirstName() + " " + user.getLastName())
-            .defaultIfEmpty(studentId);
+    private Mono<String> obtenerNombreEstudiante(String studentId) {
+        return userClient.getUserById(studentId)
+            .map(this::formatUserName)
+            .defaultIfEmpty(USER_NOT_SYNCHRONIZED);
+    }
+
+    private String formatUserName(UserResponse user) {
+        String fullName = java.util.stream.Stream.of(user.getFirstName(), user.getLastName())
+            .filter(value -> value != null && !value.isBlank())
+            .map(String::trim)
+            .collect(Collectors.joining(" "));
+
+        if (!fullName.isBlank()) {
+            return fullName;
+        }
+
+        if (user.getEmail() != null && !user.getEmail().isBlank()) {
+            return user.getEmail();
+        }
+
+        return USER_NOT_SYNCHRONIZED;
     }
 
     private Mono<Map<String, String>> obtenerNombresClases(List<Attendance> attendances, String authHeader) {
         Set<String> classIds = attendances.stream()
             .map(Attendance::getClaseId)
+            .filter(id -> id != null && !id.isBlank())
             .collect(Collectors.toSet());
 
         Set<String> teacherIds = attendances.stream()
             .map(Attendance::getProfesorId)
+            .filter(id -> id != null && !id.isBlank())
             .collect(Collectors.toSet());
 
         if (classIds.isEmpty() || teacherIds.isEmpty()) {
@@ -261,7 +286,8 @@ public class ReportController {
             .collectMap(schedule -> schedule.getId().toString(), ScheduleResponse::getCourseId)
             .flatMap(classCourseIds -> {
                 if (classCourseIds.isEmpty()) {
-                    return Mono.just(Map.of());
+                    return Mono.just(classIds.stream()
+                        .collect(Collectors.toMap(id -> id, id -> CLASS_NOT_SYNCHRONIZED)));
                 }
 
                 Set<Long> courseIds = classCourseIds.values().stream()
@@ -277,8 +303,12 @@ public class ReportController {
                     .map(courseNames -> classCourseIds.entrySet().stream()
                         .collect(Collectors.toMap(
                             Map.Entry::getKey,
-                            entry -> courseNames.getOrDefault(entry.getValue(), "Clase " + entry.getKey())
-                        )));
+                            entry -> courseNames.getOrDefault(entry.getValue(), CLASS_NOT_SYNCHRONIZED)
+                        )))
+                    .map(resolved -> {
+                        classIds.forEach(id -> resolved.putIfAbsent(id, CLASS_NOT_SYNCHRONIZED));
+                        return resolved;
+                    });
             });
     }
 
@@ -391,7 +421,7 @@ public class ReportController {
                 String estado = estadoLabel(a);
                 Color estadoColor = estadoColor(a);
                 
-                String nombre = nombres.getOrDefault(a.getEstudianteId(), a.getEstudianteId());
+                String nombre = nombres.getOrDefault(a.getEstudianteId(), USER_NOT_SYNCHRONIZED);
                 if (nombre.length() > 30) nombre = nombre.substring(0, 27) + "...";
                 
                 table.addCell(new PdfPCell(new Phrase(String.valueOf(counter++), new Font(Font.HELVETICA, 9))));
@@ -614,7 +644,7 @@ public class ReportController {
 
             for (Map.Entry<String, List<Attendance>> entry : porClase.entrySet()) {
                 String claseId = entry.getKey();
-                String nombreClase = nombresClases.getOrDefault(claseId, "Clase " + claseId);
+                String nombreClase = nombresClases.getOrDefault(claseId, CLASS_NOT_SYNCHRONIZED);
                 List<Attendance> asistencias = entry.getValue();
                 
                 for (int i = 0; i < asistencias.size(); i++) {
@@ -623,8 +653,8 @@ public class ReportController {
                     String estado = estadoLabel(a);
                     Color estadoColor = estadoColor(a);
                     
-                    String nombreEstudiante = nombres.getOrDefault(a.getEstudianteId(), a.getEstudianteId());
-                    String nombreProfesor = nombres.getOrDefault(a.getProfesorId(), a.getProfesorId());
+                    String nombreEstudiante = nombres.getOrDefault(a.getEstudianteId(), USER_NOT_SYNCHRONIZED);
+                    String nombreProfesor = nombres.getOrDefault(a.getProfesorId(), USER_NOT_SYNCHRONIZED);
                     
                     if (nombreProfesor.length() > 25) nombreProfesor = nombreProfesor.substring(0, 22) + "...";
                     
