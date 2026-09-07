@@ -17,7 +17,8 @@ public class AttendanceSchemaInitializer implements ApplicationRunner {
 
     @Override
     public void run(ApplicationArguments args) {
-        createSessionTable()
+        createAttendanceTable()
+                .then(createSessionTable())
                 .then(addSessionIdToAttendance())
                 .then(createSessionIndexes())
                 .then(backfillAttendanceSessions())
@@ -30,6 +31,30 @@ public class AttendanceSchemaInitializer implements ApplicationRunner {
                     return Mono.empty();
                 })
                 .subscribe();
+    }
+
+    private Mono<Void> createAttendanceTable() {
+        return databaseClient.sql("""
+                CREATE TABLE IF NOT EXISTS asistencias (
+                    id BIGSERIAL PRIMARY KEY,
+                    session_id BIGINT,
+                    estudiante_id VARCHAR(80) NOT NULL,
+                    clase_id VARCHAR(80) NOT NULL,
+                    profesor_id VARCHAR(80) NOT NULL,
+                    registrado_por VARCHAR(80),
+                    fecha DATE NOT NULL,
+                    anio_lectivo INTEGER NOT NULL,
+                    estado VARCHAR(2) NOT NULL,
+                    hora_llegada TIME,
+                    justificacion_nota TEXT,
+                    justificacion_foto_url TEXT,
+                    registrado_en TIMESTAMP,
+                    creado_en TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    actualizado_en TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    version INTEGER NOT NULL DEFAULT 0
+                )
+                """)
+                .then();
     }
 
     private Mono<Void> createSessionTable() {
@@ -106,7 +131,11 @@ public class AttendanceSchemaInitializer implements ApplicationRunner {
                         WHERE a.session_id IS NULL
                           AND s.clase_id = a.clase_id
                           AND s.fecha = a.fecha
-                        """).then());
+                        """).then())
+                .onErrorResume(error -> {
+                    log.warn("Se omitio la regularizacion historica de sesiones de asistencia: {}", error.getMessage());
+                    return Mono.empty();
+                });
     }
 
     private Mono<Void> createAuditTable() {

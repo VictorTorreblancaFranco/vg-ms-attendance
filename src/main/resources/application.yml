@@ -48,10 +48,19 @@ management:
   endpoint:
     health:
       show-details: always
+      probes:
+        enabled: true
   metrics:
     export:
       prometheus:
         enabled: false
+
+attendance:
+  clients:
+    timeout: ${ATTENDANCE_CLIENT_TIMEOUT:5s}
+  rate-limit:
+    enabled: ${ATTENDANCE_RATE_LIMIT_ENABLED:true}
+    requests-per-minute: ${ATTENDANCE_RATE_LIMIT_REQUESTS_PER_MINUTE:120}
 
 springdoc:
   api-docs:

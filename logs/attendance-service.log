@@ -1,2 +1,0 @@
-2026-06-03T04:48:24.628-05:00  INFO 72801 --- [vg-ms-attendance] [SpringApplicationShutdownHook] o.s.b.w.embedded.netty.GracefulShutdown  : Commencing graceful shutdown. Waiting for active requests to complete
-2026-06-03T04:48:24.635-05:00  INFO 72801 --- [vg-ms-attendance] [netty-shutdown] o.s.b.w.embedded.netty.GracefulShutdown  : Graceful shutdown complete

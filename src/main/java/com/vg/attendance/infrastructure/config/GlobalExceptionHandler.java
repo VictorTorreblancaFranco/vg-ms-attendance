@@ -4,6 +4,9 @@ import com.vg.attendance.domain.exception.BusinessException;
 import com.vg.attendance.domain.exception.ConflictException;
 import com.vg.attendance.domain.exception.ForbiddenException;
 import com.vg.attendance.domain.exception.NotFoundException;
+import com.vg.attendance.domain.exception.ServiceUnavailableException;
+import lombok.extern.slf4j.Slf4j;
+import org.slf4j.MDC;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.support.WebExchangeBindException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -17,6 +20,7 @@ import java.util.List;
 import java.util.Map;
 
 @RestControllerAdvice
+@Slf4j
 public class GlobalExceptionHandler {
 
     @ExceptionHandler(NotFoundException.class)
@@ -57,16 +61,25 @@ public class GlobalExceptionHandler {
     public Mono<Map<String, Object>> handleBadRequestException(Exception ex) {
         return errorResponse("BUSINESS_RULE_VIOLATION", resolveMessage(ex), HttpStatus.BAD_REQUEST);
     }
+
+    @ExceptionHandler(ServiceUnavailableException.class)
+    @ResponseStatus(HttpStatus.SERVICE_UNAVAILABLE)
+    public Mono<Map<String, Object>> handleServiceUnavailableException(ServiceUnavailableException ex) {
+        log.warn("Dependency unavailable [{}]: {}", ex.getCode(), ex.getMessage());
+        return errorResponse(ex.getCode(), ex.getMessage(), HttpStatus.SERVICE_UNAVAILABLE);
+    }
     
     @ExceptionHandler(RuntimeException.class)
-    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
     public Mono<Map<String, Object>> handleRuntimeException(RuntimeException ex) {
-        return errorResponse("REQUEST_ERROR", resolveMessage(ex), HttpStatus.BAD_REQUEST);
+        log.error("Unhandled runtime error", ex);
+        return errorResponse("INTERNAL_ERROR", "Ocurrió un error inesperado. Intenta nuevamente.", HttpStatus.INTERNAL_SERVER_ERROR);
     }
     
     @ExceptionHandler(Exception.class)
     @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
     public Mono<Map<String, Object>> handleGenericException(Exception ex) {
+        log.error("Unhandled error", ex);
         return errorResponse("INTERNAL_ERROR", "Ocurrió un error inesperado. Intenta nuevamente.", HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
@@ -83,6 +96,10 @@ public class GlobalExceptionHandler {
         response.put("status", status.value());
         response.put("details", details);
         response.put("timestamp", Instant.now().toString());
+        String traceId = MDC.get("traceId");
+        if (traceId != null && !traceId.isBlank()) {
+            response.put("traceId", traceId);
+        }
         return Mono.just(response);
     }
 

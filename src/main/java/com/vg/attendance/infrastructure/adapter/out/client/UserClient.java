@@ -12,6 +12,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
@@ -26,6 +27,9 @@ public class UserClient {
     private final WebClient userWebClient;
     private final CircuitBreaker circuitBreaker;
     private final Retry retry;
+
+    @Value("${attendance.clients.timeout:5s}")
+    private Duration requestTimeout = Duration.ofSeconds(5);
 
     @Autowired
     public UserClient(@Qualifier("userWebClient") WebClient userWebClient,
@@ -52,9 +56,9 @@ public class UserClient {
                 })
                 .transformDeferred(CircuitBreakerOperator.of(circuitBreaker))
                 .transformDeferred(RetryOperator.of(retry))
-                .timeout(Duration.ofSeconds(10))
+                .timeout(requestTimeout)
                 .onErrorResume(e -> {
-                    log.error("Error al obtener usuario {}: {}", userId, e.getMessage());
+                    log.warn("User service unavailable while resolving user {}: {}", userId, e.getMessage());
                     return Mono.empty();
                 });
     }
@@ -75,9 +79,9 @@ public class UserClient {
                 })
                 .transformDeferred(CircuitBreakerOperator.of(circuitBreaker))
                 .transformDeferred(RetryOperator.of(retry))
-                .timeout(Duration.ofSeconds(10))
+                .timeout(requestTimeout)
                 .onErrorResume(e -> {
-                    log.error("Error al obtener usuario {}: {}", userId, e.getMessage());
+                    log.warn("User service unavailable while resolving user {}: {}", userId, e.getMessage());
                     return Mono.empty();
                 });
     }
@@ -98,9 +102,9 @@ public class UserClient {
                 })
                 .transformDeferred(CircuitBreakerOperator.of(circuitBreaker))
                 .transformDeferred(RetryOperator.of(retry))
-                .timeout(Duration.ofSeconds(10))
+                .timeout(requestTimeout)
                 .onErrorResume(e -> {
-                    log.error("Error al obtener apoderados del estudiante {}: {}", studentId, e.getMessage());
+                    log.warn("User service unavailable while resolving guardians for student {}: {}", studentId, e.getMessage());
                     return Flux.empty();
                 });
     }
