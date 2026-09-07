@@ -9,6 +9,7 @@ import com.vg.attendance.application.port.in.command.UpdateAttendanceCommand;
 import com.vg.attendance.application.port.in.dto.AttendanceAuditResponse;
 import com.vg.attendance.application.port.in.dto.AttendanceResponse;
 import com.vg.attendance.domain.exception.BusinessException;
+import com.vg.attendance.domain.exception.ConflictException;
 import com.vg.attendance.domain.exception.ForbiddenException;
 import com.vg.attendance.infrastructure.adapter.in.web.dto.AttendanceBulkItemRequest;
 import com.vg.attendance.infrastructure.adapter.in.web.dto.AttendanceBulkRequest;
@@ -358,7 +359,12 @@ public class AttendanceController {
                 .justificacionFotoUrl(item.getJustificacionFotoUrl())
                 .totalEstudiantesSesion(request.getAsistencias().size())
                 .build();
-            return registerUseCase.registerAttendance(command);
+            return registerUseCase.registerAttendance(command)
+                .onErrorResume(ConflictException.class, conflict -> findExistingBulkAttendance(claseId, request.getFecha(), item.getEstudianteId())
+                    .switchIfEmpty(Mono.error(conflict))
+                    .doOnNext(saved -> log.info(
+                        "Bulk attendance already existed; returning stored record for student {} and class {}",
+                        item.getEstudianteId(), claseId)));
         }
 
         if (hasSensitiveBulkChange(existing, item)
@@ -377,6 +383,12 @@ public class AttendanceController {
             .changedByRole(role)
             .build();
         return updateUseCase.updateAttendance(existing.getId(), command);
+    }
+
+    private Mono<AttendanceResponse> findExistingBulkAttendance(String claseId, LocalDate fecha, String estudianteId) {
+        return getUseCase.getAttendanceByClass(claseId, fecha)
+            .filter(attendance -> estudianteId.equals(attendance.getEstudianteId()))
+            .next();
     }
 
     private void validateBulkStudents(List<AttendanceBulkItemRequest> items, List<EnrollmentResponse> students) {
