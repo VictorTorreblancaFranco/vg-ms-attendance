@@ -414,11 +414,13 @@ public class AttendanceController {
         }
 
         if (!requestedIds.containsAll(enrolledIds)) {
-            List<String> missing = enrolledIds.stream()
+            List<String> notIncludedInRequest = enrolledIds.stream()
                 .filter(studentId -> !requestedIds.contains(studentId))
                 .limit(10)
                 .toList();
-            throw new BusinessException("Debe enviar la asistencia de todos los estudiantes de la clase. Faltan: " + String.join(", ", missing));
+            log.warn(
+                "Bulk attendance request has {} enrolled students not included in the UI payload: {}",
+                enrolledIds.size() - requestedIds.size(), notIncludedInRequest);
         }
     }
 
