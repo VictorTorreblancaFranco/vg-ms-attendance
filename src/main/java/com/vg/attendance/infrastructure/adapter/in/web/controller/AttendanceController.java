@@ -329,6 +329,7 @@ public class AttendanceController {
                                                            List<EnrollmentResponse> students) {
         validateBulkStudents(request.getAsistencias(), students);
         request.getAsistencias().forEach(item -> applyLateTolerance(schedule, item));
+        validateBulkItems(request.getAsistencias());
 
         return getUseCase.getAttendanceByClass(claseId, request.getFecha())
             .collectMap(AttendanceResponse::getEstudianteId)
@@ -338,6 +339,36 @@ public class AttendanceController {
                     BULK_SAVE_CONCURRENCY)
                 .collectList()
                 .flatMapMany(savedAttendances -> enrichAttendances(savedAttendances, token)));
+    }
+
+    /**
+     * Validate every item before the first database write. Bulk operations are
+     * sequential, so validating lazily inside saveBulkItem could leave a
+     * partially persisted batch when a later student is invalid.
+     */
+    private void validateBulkItems(List<AttendanceBulkItemRequest> items) {
+        for (AttendanceBulkItemRequest item : items) {
+            String studentId = item.getEstudianteId();
+            String status = item.getEstado() == null
+                ? ""
+                : item.getEstado().trim().toUpperCase(Locale.ROOT);
+
+            if ("T".equals(status) && item.getHoraLlegada() == null) {
+                throw new BusinessException("La tardanza requiere hora de llegada para el estudiante " + studentId);
+            }
+            if ("J".equals(status)
+                    && (item.getJustificacionNota() == null || item.getJustificacionNota().isBlank())) {
+                throw new BusinessException("La justificación requiere una nota para el estudiante " + studentId);
+            }
+            if (!"T".equals(status) && item.getHoraLlegada() != null) {
+                throw new BusinessException("La hora de llegada solo aplica a tardanzas para el estudiante " + studentId);
+            }
+            if (!"T".equals(status) && !"J".equals(status)
+                    && item.getJustificacionNota() != null && !item.getJustificacionNota().isBlank()) {
+                throw new BusinessException("La nota de justificación no aplica al estado " + status
+                    + " para el estudiante " + studentId);
+            }
+        }
     }
 
     private Mono<AttendanceResponse> saveBulkItem(String claseId,
