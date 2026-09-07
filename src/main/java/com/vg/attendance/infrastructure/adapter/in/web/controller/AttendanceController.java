@@ -56,7 +56,9 @@ import java.util.Set;
 public class AttendanceController {
 
     private static final ZoneId SCHOOL_ZONE = ZoneId.of("America/Lima");
-    private static final int BULK_SAVE_CONCURRENCY = 6;
+    // A new class session is created lazily; serializing the batch prevents
+    // concurrent inserts from racing on the unique class/date constraint.
+    private static final int BULK_SAVE_CONCURRENCY = 1;
     private static final String USER_NOT_SYNCHRONIZED = "Usuario no sincronizado";
     
     private final RegisterAttendanceUseCase registerUseCase;
